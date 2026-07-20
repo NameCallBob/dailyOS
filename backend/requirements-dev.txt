@@ -1,0 +1,9 @@
+-r requirements.txt
+pytest
+pytest-django
+factory-boy
+black
+ruff
+mypy
+django-stubs
+isort
