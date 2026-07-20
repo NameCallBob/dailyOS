@@ -1,0 +1,7866 @@
+# DailyOS API — OpenAPI 3.1 規格（由 docs/api-design.md 對應生成）
+openapi: 3.1.0
+info:
+  title: DailyOS API
+  version: 1.0.0
+  description: 'DailyOS 登入模式（Auth）後端 REST API 契約。
+
+
+    - 所有 JSON 欄位使用 snake_case（前端 lib/http.ts 負責與 camelCase 互轉）。
+
+    - 分頁採 DRF 風格 { results, count, next, previous }。
+
+    - 錯誤格式一律為 { code, message, field_errors?, request_id? }。
+
+    - 每筆資源記錄皆繼承 BaseRecord（id/created_at/updated_at/version/deleted）。
+
+    - 詳細欄位語意與同步策略另見 docs/api-design.md 與 docs/offline-sync.md。'
+servers:
+- url: '{apiBase}/'
+  variables:
+    apiBase:
+      default: https://api.example.com
+tags:
+- name: tasks
+- name: projects
+- name: tags
+- name: calendar_events
+- name: timer_sessions
+- name: time_entries
+- name: notes
+- name: note_versions
+- name: habits
+- name: habit_logs
+- name: body_metrics
+- name: water_logs
+- name: meal_logs
+- name: sleep_logs
+- name: symptom_defs
+- name: symptom_logs
+- name: medications
+- name: supplements
+- name: medication_schedules
+- name: medication_logs
+- name: workouts
+- name: exercise_defs
+- name: workout_exercises
+- name: workout_sets
+- name: rehab_plans
+- name: rehab_exercises
+- name: rehab_sessions
+- name: health_documents
+- name: appointments
+- name: activities
+- name: user_profile
+- name: user_preferences
+- name: notification_prefs
+- name: dashboard_layout
+- name: auth
+- name: account
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque token (daios_token cookie)
+  schemas:
+    BaseRecord:
+      type: object
+      properties:
+        id: &id001
+          type: string
+          format: uuid
+        created_at: &id002
+          type: string
+          format: date-time
+        updated_at: &id003
+          type: string
+          format: date-time
+        version: &id004
+          type: integer
+          minimum: 1
+        deleted: &id005
+          type: boolean
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+    ApiError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        field_errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        request_id:
+          type:
+          - string
+          - 'null'
+      required:
+      - code
+      - message
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+      required:
+      - id
+      - email
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/AuthUser'
+      required:
+      - token
+      - user
+    Credentials:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required:
+      - email
+      - password
+    Tasks:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        title: &id006
+          type: string
+        description: &id007
+          type:
+          - string
+          - 'null'
+        status: &id008
+          type: string
+          enum:
+          - inbox
+          - planned
+          - in_progress
+          - completed
+          - cancelled
+        priority: &id009
+          type: string
+          enum:
+          - low
+          - med
+          - high
+          - urgent
+        project_id: &id010
+          type:
+          - string
+          - 'null'
+        tags: &id011
+          type: array
+          items:
+            type: string
+        due_date: &id012
+          type:
+          - string
+          - 'null'
+          format: date
+        scheduled_at: &id013
+          type:
+          - string
+          - 'null'
+          format: date-time
+        estimate_min: &id014
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        actual_min: &id015
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        energy: &id016
+          type:
+          - string
+          - 'null'
+          enum:
+          - low
+          - med
+          - high
+          - null
+        context: &id017
+          type:
+          - string
+          - 'null'
+        recurrence_rule: &id018
+          type:
+          - string
+          - 'null'
+        parent_id: &id019
+          type:
+          - string
+          - 'null'
+        depends_on: &id020
+          type: array
+          items:
+            type: string
+        remind_at: &id021
+          type:
+          - string
+          - 'null'
+          format: date-time
+        completed_at: &id022
+          type:
+          - string
+          - 'null'
+          format: date-time
+        archived: &id023
+          type: boolean
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - title
+      description: tasks 資源記錄
+    TasksInput:
+      type: object
+      properties:
+        title: *id006
+        description: *id007
+        status: *id008
+        priority: *id009
+        project_id: *id010
+        tags: *id011
+        due_date: *id012
+        scheduled_at: *id013
+        estimate_min: *id014
+        actual_min: *id015
+        energy: *id016
+        context: *id017
+        recurrence_rule: *id018
+        parent_id: *id019
+        depends_on: *id020
+        remind_at: *id021
+        completed_at: *id022
+        archived: *id023
+      required:
+      - title
+    TasksPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tasks'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    Projects:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        name: &id024
+          type: string
+        description: &id025
+          type:
+          - string
+          - 'null'
+        status: &id026
+          type: string
+          enum:
+          - planning
+          - active
+          - on_hold
+          - completed
+          - archived
+        color: &id027
+          type: string
+        start_date: &id028
+          type:
+          - string
+          - 'null'
+          format: date
+        target_date: &id029
+          type:
+          - string
+          - 'null'
+          format: date
+        progress: &id030
+          type: number
+          minimum: 0
+          maximum: 100
+        milestones: &id031
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              title:
+                type: string
+              due_date:
+                type:
+                - string
+                - 'null'
+                format: date
+              done:
+                type: boolean
+            required:
+            - id
+            - title
+            - done
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - name
+      description: projects 資源記錄
+    ProjectsInput:
+      type: object
+      properties:
+        name: *id024
+        description: *id025
+        status: *id026
+        color: *id027
+        start_date: *id028
+        target_date: *id029
+        progress: *id030
+        milestones: *id031
+      required:
+      - name
+    ProjectsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Projects'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    Tags:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        name: &id032
+          type: string
+        color: &id033
+          type: string
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - name
+      description: tags 資源記錄
+    TagsInput:
+      type: object
+      properties:
+        name: *id032
+        color: *id033
+      required:
+      - name
+    TagsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tags'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    CalendarEvents:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        title: &id034
+          type: string
+        description: &id035
+          type:
+          - string
+          - 'null'
+        start_at: &id036
+          type: string
+          format: date-time
+        end_at: &id037
+          type: string
+          format: date-time
+        all_day: &id038
+          type: boolean
+        tz: &id039
+          type: string
+        type: &id040
+          type: string
+          enum:
+          - meeting
+          - task
+          - personal
+          - health
+          - reminder
+          - other
+        recurrence_rule: &id041
+          type:
+          - string
+          - 'null'
+        task_id: &id042
+          type:
+          - string
+          - 'null'
+        location: &id043
+          type:
+          - string
+          - 'null'
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - title
+      - start_at
+      - end_at
+      - all_day
+      - tz
+      - type
+      description: calendar_events 資源記錄
+    CalendarEventsInput:
+      type: object
+      properties:
+        title: *id034
+        description: *id035
+        start_at: *id036
+        end_at: *id037
+        all_day: *id038
+        tz: *id039
+        type: *id040
+        recurrence_rule: *id041
+        task_id: *id042
+        location: *id043
+      required:
+      - title
+      - start_at
+      - end_at
+      - all_day
+      - tz
+      - type
+    CalendarEventsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CalendarEvents'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    TimerSessions:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        label: &id044
+          type: string
+        category: &id045
+          type: string
+          enum:
+          - pomodoro
+          - deep_work
+          - meeting
+          - study
+          - admin
+          - exercise
+          - break
+          - other
+        task_id: &id046
+          type:
+          - string
+          - 'null'
+        project_id: &id047
+          type:
+          - string
+          - 'null'
+        status: &id048
+          type: string
+          enum:
+          - running
+          - paused
+          - completed
+          - cancelled
+        mode: &id049
+          type: string
+          enum:
+          - stopwatch
+          - pomodoro
+        target_seconds: &id050
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+        session_start_at: &id051
+          type: string
+          format: date-time
+        accumulated_seconds: &id052
+          type: integer
+          minimum: 0
+        started_at: &id053
+          type:
+          - string
+          - 'null'
+          format: date-time
+        paused_at: &id054
+          type:
+          - string
+          - 'null'
+          format: date-time
+        completed_at: &id055
+          type:
+          - string
+          - 'null'
+          format: date-time
+        pomodoro_phase: &id056
+          type:
+          - string
+          - 'null'
+          enum:
+          - focus
+          - short_break
+          - long_break
+          - null
+        pomodoro_count: &id057
+          type: integer
+          minimum: 0
+        note: &id058
+          type: string
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - label
+      - status
+      - session_start_at
+      description: timer_sessions 資源記錄
+    TimerSessionsInput:
+      type: object
+      properties:
+        label: *id044
+        category: *id045
+        task_id: *id046
+        project_id: *id047
+        status: *id048
+        mode: *id049
+        target_seconds: *id050
+        session_start_at: *id051
+        accumulated_seconds: *id052
+        started_at: *id053
+        paused_at: *id054
+        completed_at: *id055
+        pomodoro_phase: *id056
+        pomodoro_count: *id057
+        note: *id058
+      required:
+      - label
+      - status
+      - session_start_at
+    TimerSessionsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimerSessions'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    TimeEntries:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        label: &id059
+          type: string
+        category: &id060
+          type: string
+          enum:
+          - pomodoro
+          - deep_work
+          - meeting
+          - study
+          - admin
+          - exercise
+          - break
+          - other
+        task_id: &id061
+          type:
+          - string
+          - 'null'
+        project_id: &id062
+          type:
+          - string
+          - 'null'
+        timer_session_id: &id063
+          type:
+          - string
+          - 'null'
+        start_at: &id064
+          type: string
+          format: date-time
+        end_at: &id065
+          type: string
+          format: date-time
+        duration_seconds: &id066
+          type: integer
+          minimum: 0
+        source: &id067
+          type: string
+          enum:
+          - timer
+          - manual
+        note: &id068
+          type: string
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - label
+      - start_at
+      - end_at
+      - duration_seconds
+      - source
+      description: time_entries 資源記錄
+    TimeEntriesInput:
+      type: object
+      properties:
+        label: *id059
+        category: *id060
+        task_id: *id061
+        project_id: *id062
+        timer_session_id: *id063
+        start_at: *id064
+        end_at: *id065
+        duration_seconds: *id066
+        source: *id067
+        note: *id068
+      required:
+      - label
+      - start_at
+      - end_at
+      - duration_seconds
+      - source
+    TimeEntriesPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeEntries'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    Notes:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        title: &id069
+          type: string
+        content: &id070
+          type: string
+        folder: &id071
+          type: string
+        tags: &id072
+          type: array
+          items:
+            type: string
+        pinned: &id073
+          type: boolean
+        is_daily: &id074
+          type: boolean
+        daily_date: &id075
+          type:
+          - string
+          - 'null'
+          format: date
+        project_id: &id076
+          type:
+          - string
+          - 'null'
+        project_name: &id077
+          type:
+          - string
+          - 'null'
+        task_id: &id078
+          type:
+          - string
+          - 'null'
+        task_title: &id079
+          type:
+          - string
+          - 'null'
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - title
+      - content
+      - folder
+      - tags
+      - pinned
+      - is_daily
+      description: notes 資源記錄
+    NotesInput:
+      type: object
+      properties:
+        title: *id069
+        content: *id070
+        folder: *id071
+        tags: *id072
+        pinned: *id073
+        is_daily: *id074
+        daily_date: *id075
+        project_id: *id076
+        project_name: *id077
+        task_id: *id078
+        task_title: *id079
+      required:
+      - title
+      - content
+      - folder
+      - tags
+      - pinned
+      - is_daily
+    NotesPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notes'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    NoteVersions:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        note_id: &id080
+          type: string
+        title: &id081
+          type: string
+        content: &id082
+          type: string
+        folder: &id083
+          type: string
+        tags: &id084
+          type: array
+          items:
+            type: string
+        reason: &id085
+          type: string
+          enum:
+          - manual_save
+          - auto_snapshot
+          - restore
+          - conflict_branch
+        note_version_at_snapshot: &id086
+          type: integer
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - note_id
+      - title
+      - content
+      - folder
+      - tags
+      - reason
+      - note_version_at_snapshot
+      description: note_versions 資源記錄
+    NoteVersionsInput:
+      type: object
+      properties:
+        note_id: *id080
+        title: *id081
+        content: *id082
+        folder: *id083
+        tags: *id084
+        reason: *id085
+        note_version_at_snapshot: *id086
+      required:
+      - note_id
+      - title
+      - content
+      - folder
+      - tags
+      - reason
+      - note_version_at_snapshot
+    NoteVersionsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteVersions'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    Habits:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        name: &id087
+          type: string
+        icon: &id088
+          type: string
+        type: &id089
+          type: string
+          enum:
+          - boolean
+          - count
+          - numeric
+          - duration
+        unit: &id090
+          type:
+          - string
+          - 'null'
+        target_value: &id091
+          type: number
+          minimum: 0
+        increment: &id092
+          type: number
+          minimum: 0
+        schedule: &id093
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+              - daily
+              - weekly-days
+              - monthly
+              - every-n-days
+            days:
+              type: array
+              items:
+                type: integer
+                minimum: 0
+                maximum: 6
+            day_of_month:
+              type:
+              - integer
+              - 'null'
+              minimum: 1
+              maximum: 31
+            n:
+              type:
+              - integer
+              - 'null'
+              minimum: 2
+              maximum: 90
+            anchor_date:
+              type:
+              - string
+              - 'null'
+              format: date
+          required:
+          - type
+        reminder_time: &id094
+          type:
+          - string
+          - 'null'
+        archived: &id095
+          type: boolean
+        notes: &id096
+          type:
+          - string
+          - 'null'
+        sort_order: &id097
+          type: number
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - name
+      - icon
+      - type
+      - target_value
+      - increment
+      - schedule
+      - archived
+      - sort_order
+      description: habits 資源記錄
+    HabitsInput:
+      type: object
+      properties:
+        name: *id087
+        icon: *id088
+        type: *id089
+        unit: *id090
+        target_value: *id091
+        increment: *id092
+        schedule: *id093
+        reminder_time: *id094
+        archived: *id095
+        notes: *id096
+        sort_order: *id097
+      required:
+      - name
+      - icon
+      - type
+      - target_value
+      - increment
+      - schedule
+      - archived
+      - sort_order
+    HabitsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Habits'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    HabitLogs:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        habit_id: &id098
+          type: string
+        date: &id099
+          type: string
+          format: date
+        value: &id100
+          type: number
+          minimum: 0
+        note: &id101
+          type:
+          - string
+          - 'null'
+        logged_at: &id102
+          type: string
+          format: date-time
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - habit_id
+      - date
+      - value
+      - logged_at
+      description: habit_logs 資源記錄
+    HabitLogsInput:
+      type: object
+      properties:
+        habit_id: *id098
+        date: *id099
+        value: *id100
+        note: *id101
+        logged_at: *id102
+      required:
+      - habit_id
+      - date
+      - value
+      - logged_at
+    HabitLogsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/HabitLogs'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    BodyMetrics:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        date: &id103
+          type: string
+          format: date
+        logged_at: &id104
+          type: string
+          format: date-time
+        weight_kg: &id105
+          type: number
+          minimum: 0
+          maximum: 400
+        body_fat_percent: &id106
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 80
+        muscle_mass_kg: &id107
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 200
+        skeletal_muscle_kg: &id108
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 150
+        visceral_fat_level: &id109
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 60
+        waist_cm: &id110
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 300
+        chest_cm: &id111
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 300
+        hip_cm: &id112
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 300
+        arm_cm: &id113
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 120
+        thigh_cm: &id114
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 150
+        calf_cm: &id115
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 120
+        resting_heart_rate: &id116
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 300
+        blood_pressure_systolic: &id117
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 300
+        blood_pressure_diastolic: &id118
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 200
+        spo2_percent: &id119
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 100
+        body_temp_celsius: &id120
+          type:
+          - number
+          - 'null'
+          minimum: 25
+          maximum: 45
+        custom_metrics: &id121
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              label:
+                type: string
+              value:
+                type: number
+              unit:
+                type: string
+            required:
+            - id
+            - label
+            - value
+            - unit
+        note: &id122
+          type:
+          - string
+          - 'null'
+        source: &id123
+          type: string
+          enum:
+          - manual
+          - device
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - date
+      - logged_at
+      - weight_kg
+      - source
+      description: body_metrics 資源記錄
+    BodyMetricsInput:
+      type: object
+      properties:
+        date: *id103
+        logged_at: *id104
+        weight_kg: *id105
+        body_fat_percent: *id106
+        muscle_mass_kg: *id107
+        skeletal_muscle_kg: *id108
+        visceral_fat_level: *id109
+        waist_cm: *id110
+        chest_cm: *id111
+        hip_cm: *id112
+        arm_cm: *id113
+        thigh_cm: *id114
+        calf_cm: *id115
+        resting_heart_rate: *id116
+        blood_pressure_systolic: *id117
+        blood_pressure_diastolic: *id118
+        spo2_percent: *id119
+        body_temp_celsius: *id120
+        custom_metrics: *id121
+        note: *id122
+        source: *id123
+      required:
+      - date
+      - logged_at
+      - weight_kg
+      - source
+    BodyMetricsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BodyMetrics'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    WaterLogs:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        date: &id124
+          type: string
+          format: date
+        logged_at: &id125
+          type: string
+          format: date-time
+        amount_ml: &id126
+          type: number
+          minimum: 0
+          maximum: 5000
+        container_label: &id127
+          type:
+          - string
+          - 'null'
+        note: &id128
+          type:
+          - string
+          - 'null'
+        source: &id129
+          type: string
+          enum:
+          - manual
+          - device
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - date
+      - logged_at
+      - amount_ml
+      - source
+      description: water_logs 資源記錄
+    WaterLogsInput:
+      type: object
+      properties:
+        date: *id124
+        logged_at: *id125
+        amount_ml: *id126
+        container_label: *id127
+        note: *id128
+        source: *id129
+      required:
+      - date
+      - logged_at
+      - amount_ml
+      - source
+    WaterLogsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/WaterLogs'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    MealLogs:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        date: &id130
+          type: string
+          format: date
+        logged_at: &id131
+          type: string
+          format: date-time
+        type: &id132
+          type: string
+          enum:
+          - breakfast
+          - lunch
+          - dinner
+          - snack
+          - supplement
+        photo: &id133
+          type:
+          - string
+          - 'null'
+        text: &id134
+          type: string
+        food_tags: &id135
+          type: array
+          items:
+            type: string
+        portion: &id136
+          type:
+          - string
+          - 'null'
+        calories: &id137
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 100000
+        protein: &id138
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 100000
+        carb: &id139
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 100000
+        fat: &id140
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 100000
+        calcium: &id141
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 100000
+        fiber: &id142
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 100000
+        water: &id143
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 100000
+        custom_nutrients: &id144
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              label:
+                type: string
+              value:
+                type: number
+              unit:
+                type:
+                - string
+                - 'null'
+            required:
+            - id
+            - label
+            - value
+        notes: &id145
+          type:
+          - string
+          - 'null'
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - date
+      - logged_at
+      - type
+      - text
+      - food_tags
+      description: meal_logs 資源記錄
+    MealLogsInput:
+      type: object
+      properties:
+        date: *id130
+        logged_at: *id131
+        type: *id132
+        photo: *id133
+        text: *id134
+        food_tags: *id135
+        portion: *id136
+        calories: *id137
+        protein: *id138
+        carb: *id139
+        fat: *id140
+        calcium: *id141
+        fiber: *id142
+        water: *id143
+        custom_nutrients: *id144
+        notes: *id145
+      required:
+      - date
+      - logged_at
+      - type
+      - text
+      - food_tags
+    MealLogsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MealLogs'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    SleepLogs:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        date: &id146
+          type: string
+          format: date
+        bedtime: &id147
+          type: string
+          format: date-time
+        sleep_at: &id148
+          type: string
+          format: date-time
+        wake_at: &id149
+          type: string
+          format: date-time
+        hours: &id150
+          type: number
+          minimum: 0
+          maximum: 24
+        awakenings: &id151
+          type: integer
+          minimum: 0
+          maximum: 20
+        quality: &id152
+          type: integer
+          minimum: 1
+          maximum: 5
+        morning_energy: &id153
+          type: integer
+          minimum: 1
+          maximum: 5
+        pre_sleep_activity: &id154
+          type: string
+          enum:
+          - screen
+          - reading
+          - exercise
+          - meal
+          - caffeine
+          - alcohol
+          - meditation
+          - work
+          - none
+          - other
+        notes: &id155
+          type:
+          - string
+          - 'null'
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - date
+      - bedtime
+      - sleep_at
+      - wake_at
+      - hours
+      - quality
+      - morning_energy
+      description: sleep_logs 資源記錄
+    SleepLogsInput:
+      type: object
+      properties:
+        date: *id146
+        bedtime: *id147
+        sleep_at: *id148
+        wake_at: *id149
+        hours: *id150
+        awakenings: *id151
+        quality: *id152
+        morning_energy: *id153
+        pre_sleep_activity: *id154
+        notes: *id155
+      required:
+      - date
+      - bedtime
+      - sleep_at
+      - wake_at
+      - hours
+      - quality
+      - morning_energy
+    SleepLogsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SleepLogs'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    SymptomDefs:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        name: &id156
+          type: string
+        category: &id157
+          type: string
+          enum:
+          - 疼痛
+          - 痠
+          - 麻
+          - 腫脹
+          - 疲勞
+          - 頭痛
+          - 情緒
+          - 壓力
+          - 自訂
+        note: &id158
+          type:
+          - string
+          - 'null'
+        archived: &id159
+          type: boolean
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - name
+      - category
+      - archived
+      description: symptom_defs 資源記錄
+    SymptomDefsInput:
+      type: object
+      properties:
+        name: *id156
+        category: *id157
+        note: *id158
+        archived: *id159
+      required:
+      - name
+      - category
+      - archived
+    SymptomDefsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SymptomDefs'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    SymptomLogs:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        symptom_def_id: &id160
+          type: string
+        date: &id161
+          type: string
+          format: date
+        start_at: &id162
+          type: string
+          format: date-time
+        intensity: &id163
+          type: number
+          minimum: 0
+          maximum: 10
+        body_location: &id164
+          type:
+          - string
+          - 'null'
+        duration_min: &id165
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 10080
+        triggers: &id166
+          type: array
+          items:
+            type: string
+        relief: &id167
+          type: array
+          items:
+            type: string
+        notes: &id168
+          type:
+          - string
+          - 'null'
+        photo: &id169
+          type:
+          - string
+          - 'null'
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - symptom_def_id
+      - date
+      - start_at
+      - intensity
+      description: symptom_logs 資源記錄
+    SymptomLogsInput:
+      type: object
+      properties:
+        symptom_def_id: *id160
+        date: *id161
+        start_at: *id162
+        intensity: *id163
+        body_location: *id164
+        duration_min: *id165
+        triggers: *id166
+        relief: *id167
+        notes: *id168
+        photo: *id169
+      required:
+      - symptom_def_id
+      - date
+      - start_at
+      - intensity
+    SymptomLogsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SymptomLogs'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    Medications:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        name: &id170
+          type: string
+        dose: &id171
+          type: number
+          minimum: 0
+        unit: &id172
+          type: string
+        frequency: &id173
+          type: string
+          enum:
+          - daily
+          - specific-days
+          - every-n-days
+          - as-needed
+        days_of_week: &id174
+          type: array
+          items:
+            type: integer
+            minimum: 0
+            maximum: 6
+        interval_days: &id175
+          type:
+          - integer
+          - 'null'
+          minimum: 2
+          maximum: 90
+        times: &id176
+          type: array
+          items:
+            type: string
+        start_date: &id177
+          type: string
+          format: date
+        end_date: &id178
+          type:
+          - string
+          - 'null'
+          format: date
+        with_food: &id179
+          type: string
+          enum:
+          - with_food
+          - empty_stomach
+          - either
+        remaining_qty: &id180
+          type:
+          - number
+          - 'null'
+          minimum: 0
+        refill_reminder: &id181
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            threshold_qty:
+              type: number
+              minimum: 0
+          required:
+          - enabled
+          - threshold_qty
+        active: &id182
+          type: boolean
+        notes: &id183
+          type:
+          - string
+          - 'null'
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - name
+      - dose
+      - unit
+      - frequency
+      - times
+      - start_date
+      - with_food
+      - active
+      description: medications 資源記錄
+    MedicationsInput:
+      type: object
+      properties:
+        name: *id170
+        dose: *id171
+        unit: *id172
+        frequency: *id173
+        days_of_week: *id174
+        interval_days: *id175
+        times: *id176
+        start_date: *id177
+        end_date: *id178
+        with_food: *id179
+        remaining_qty: *id180
+        refill_reminder: *id181
+        active: *id182
+        notes: *id183
+      required:
+      - name
+      - dose
+      - unit
+      - frequency
+      - times
+      - start_date
+      - with_food
+      - active
+    MedicationsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Medications'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    Supplements:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        name: *id170
+        dose: *id171
+        unit: *id172
+        frequency: *id173
+        days_of_week: *id174
+        interval_days: *id175
+        times: *id176
+        start_date: *id177
+        end_date: *id178
+        with_food: *id179
+        remaining_qty: *id180
+        refill_reminder: *id181
+        active: *id182
+        notes: *id183
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - name
+      - dose
+      - unit
+      - frequency
+      - times
+      - start_date
+      - with_food
+      - active
+      description: supplements 資源記錄
+    SupplementsInput:
+      type: object
+      properties:
+        name: *id170
+        dose: *id171
+        unit: *id172
+        frequency: *id173
+        days_of_week: *id174
+        interval_days: *id175
+        times: *id176
+        start_date: *id177
+        end_date: *id178
+        with_food: *id179
+        remaining_qty: *id180
+        refill_reminder: *id181
+        active: *id182
+        notes: *id183
+      required:
+      - name
+      - dose
+      - unit
+      - frequency
+      - times
+      - start_date
+      - with_food
+      - active
+    SupplementsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Supplements'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    MedicationSchedules:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        medication_id: &id184
+          type: string
+        source_type: &id185
+          type: string
+          enum:
+          - medication
+          - supplement
+        time_of_day: &id186
+          type: string
+        label: &id187
+          type:
+          - string
+          - 'null'
+        active: &id188
+          type: boolean
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - medication_id
+      - source_type
+      - time_of_day
+      - active
+      description: medication_schedules 資源記錄
+    MedicationSchedulesInput:
+      type: object
+      properties:
+        medication_id: *id184
+        source_type: *id185
+        time_of_day: *id186
+        label: *id187
+        active: *id188
+      required:
+      - medication_id
+      - source_type
+      - time_of_day
+      - active
+    MedicationSchedulesPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicationSchedules'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    MedicationLogs:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        medication_id: &id189
+          type: string
+        source_type: &id190
+          type: string
+          enum:
+          - medication
+          - supplement
+        schedule_id: &id191
+          type:
+          - string
+          - 'null'
+        scheduled_for: &id192
+          type: string
+          format: date-time
+        status: &id193
+          type: string
+          enum:
+          - taken
+          - missed
+          - skipped
+        taken_at: &id194
+          type:
+          - string
+          - 'null'
+          format: date-time
+        quantity: &id195
+          type:
+          - number
+          - 'null'
+          minimum: 0
+        note: &id196
+          type:
+          - string
+          - 'null'
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - medication_id
+      - source_type
+      - scheduled_for
+      - status
+      description: medication_logs 資源記錄
+    MedicationLogsInput:
+      type: object
+      properties:
+        medication_id: *id189
+        source_type: *id190
+        schedule_id: *id191
+        scheduled_for: *id192
+        status: *id193
+        taken_at: *id194
+        quantity: *id195
+        note: *id196
+      required:
+      - medication_id
+      - source_type
+      - scheduled_for
+      - status
+    MedicationLogsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicationLogs'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    Workouts:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        date: &id197
+          type: string
+          format: date
+        start_at: &id198
+          type: string
+          format: date-time
+        end_at: &id199
+          type:
+          - string
+          - 'null'
+          format: date-time
+        type: &id200
+          type: string
+        goal: &id201
+          type:
+          - string
+          - 'null'
+        duration_min: &id202
+          type: number
+          minimum: 1
+          maximum: 1000
+        rpe: &id203
+          type:
+          - number
+          - 'null'
+          minimum: 1
+          maximum: 10
+        avg_hr: &id204
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 260
+        calories: &id205
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 6000
+        notes: &id206
+          type:
+          - string
+          - 'null'
+        feeling: &id207
+          type: string
+        distance_km: &id208
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 500
+        pace_min_per_km: &id209
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 60
+        avg_speed_kmh: &id210
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 120
+        steps: &id211
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 200000
+        is_template: &id212
+          type: boolean
+        template_name: &id213
+          type:
+          - string
+          - 'null'
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - date
+      - start_at
+      - type
+      - duration_min
+      - feeling
+      description: workouts 資源記錄
+    WorkoutsInput:
+      type: object
+      properties:
+        date: *id197
+        start_at: *id198
+        end_at: *id199
+        type: *id200
+        goal: *id201
+        duration_min: *id202
+        rpe: *id203
+        avg_hr: *id204
+        calories: *id205
+        notes: *id206
+        feeling: *id207
+        distance_km: *id208
+        pace_min_per_km: *id209
+        avg_speed_kmh: *id210
+        steps: *id211
+        is_template: *id212
+        template_name: *id213
+      required:
+      - date
+      - start_at
+      - type
+      - duration_min
+      - feeling
+    WorkoutsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Workouts'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    ExerciseDefs:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        name: &id214
+          type: string
+        category: &id215
+          type: string
+        equipment: &id216
+          type:
+          - string
+          - 'null'
+        is_custom: &id217
+          type: boolean
+        notes: &id218
+          type:
+          - string
+          - 'null'
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - name
+      - category
+      description: exercise_defs 資源記錄
+    ExerciseDefsInput:
+      type: object
+      properties:
+        name: *id214
+        category: *id215
+        equipment: *id216
+        is_custom: *id217
+        notes: *id218
+      required:
+      - name
+      - category
+    ExerciseDefsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExerciseDefs'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    WorkoutExercises:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        workout_id: &id219
+          type: string
+        exercise_def_id: &id220
+          type: string
+        order: &id221
+          type: integer
+          minimum: 0
+        notes: &id222
+          type:
+          - string
+          - 'null'
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - workout_id
+      - exercise_def_id
+      - order
+      description: workout_exercises 資源記錄
+    WorkoutExercisesInput:
+      type: object
+      properties:
+        workout_id: *id219
+        exercise_def_id: *id220
+        order: *id221
+        notes: *id222
+      required:
+      - workout_id
+      - exercise_def_id
+      - order
+    WorkoutExercisesPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkoutExercises'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    WorkoutSets:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        workout_exercise_id: &id223
+          type: string
+        order: &id224
+          type: integer
+          minimum: 0
+        reps: &id225
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 1000
+        weight_kg: &id226
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 500
+        rest_sec: &id227
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 1800
+        rpe: &id228
+          type:
+          - number
+          - 'null'
+          minimum: 1
+          maximum: 10
+        rir: &id229
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 10
+        side: &id230
+          type:
+          - string
+          - 'null'
+        is_warmup: &id231
+          type: boolean
+        is_working: &id232
+          type: boolean
+        is_pr: &id233
+          type: boolean
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - workout_exercise_id
+      - order
+      description: workout_sets 資源記錄
+    WorkoutSetsInput:
+      type: object
+      properties:
+        workout_exercise_id: *id223
+        order: *id224
+        reps: *id225
+        weight_kg: *id226
+        rest_sec: *id227
+        rpe: *id228
+        rir: *id229
+        side: *id230
+        is_warmup: *id231
+        is_working: *id232
+        is_pr: *id233
+      required:
+      - workout_exercise_id
+      - order
+    WorkoutSetsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkoutSets'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    RehabPlans:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        name: &id234
+          type: string
+        body_region: &id235
+          type:
+          - string
+          - 'null'
+        diagnosis: &id236
+          type:
+          - string
+          - 'null'
+        goal: &id237
+          type:
+          - string
+          - 'null'
+        therapist_name: &id238
+          type:
+          - string
+          - 'null'
+        clinic_name: &id239
+          type:
+          - string
+          - 'null'
+        active: &id240
+          type: boolean
+        start_date: &id241
+          type: string
+          format: date
+        next_appointment_at: &id242
+          type:
+          - string
+          - 'null'
+          format: date
+        general_cautions: &id243
+          type:
+          - string
+          - 'null'
+        review_notes: &id244
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              date:
+                type: string
+                format: date
+              note:
+                type: string
+              adjustment:
+                type:
+                - boolean
+                - 'null'
+            required:
+            - id
+            - date
+            - note
+        note: &id245
+          type:
+          - string
+          - 'null'
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - name
+      - active
+      - start_date
+      description: rehab_plans 資源記錄
+    RehabPlansInput:
+      type: object
+      properties:
+        name: *id234
+        body_region: *id235
+        diagnosis: *id236
+        goal: *id237
+        therapist_name: *id238
+        clinic_name: *id239
+        active: *id240
+        start_date: *id241
+        next_appointment_at: *id242
+        general_cautions: *id243
+        review_notes: *id244
+        note: *id245
+      required:
+      - name
+      - active
+      - start_date
+    RehabPlansPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/RehabPlans'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    RehabExercises:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        rehab_plan_id: &id246
+          type: string
+        name: &id247
+          type: string
+        instructions: &id248
+          type:
+          - string
+          - 'null'
+        media: &id249
+          type:
+          - string
+          - 'null'
+        sets: &id250
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 50
+        reps: &id251
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 500
+        duration_sec: &id252
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 7200
+        load_limit: &id253
+          type:
+          - string
+          - 'null'
+        angle: &id254
+          type:
+          - string
+          - 'null'
+        cautions: &id255
+          type:
+          - string
+          - 'null'
+        frequency: &id256
+          type:
+          - string
+          - 'null'
+        therapist_note: &id257
+          type:
+          - string
+          - 'null'
+        effective_date: &id258
+          type: string
+          format: date
+        stop_date: &id259
+          type:
+          - string
+          - 'null'
+          format: date
+        order: &id260
+          type:
+          - integer
+          - 'null'
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - rehab_plan_id
+      - name
+      - effective_date
+      description: rehab_exercises 資源記錄
+    RehabExercisesInput:
+      type: object
+      properties:
+        rehab_plan_id: *id246
+        name: *id247
+        instructions: *id248
+        media: *id249
+        sets: *id250
+        reps: *id251
+        duration_sec: *id252
+        load_limit: *id253
+        angle: *id254
+        cautions: *id255
+        frequency: *id256
+        therapist_note: *id257
+        effective_date: *id258
+        stop_date: *id259
+        order: *id260
+      required:
+      - rehab_plan_id
+      - name
+      - effective_date
+    RehabExercisesPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/RehabExercises'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    RehabSessions:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        rehab_plan_id: &id261
+          type: string
+        rehab_exercise_id: &id262
+          type: string
+        date: &id263
+          type: string
+          format: date
+        done: &id264
+          type: boolean
+        actual_sets: &id265
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 50
+        actual_reps: &id266
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 500
+        actual_time: &id267
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 7200
+        discomfort_before: &id268
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 10
+        discomfort_after: &id269
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 10
+        load: &id270
+          type:
+          - string
+          - 'null'
+        notes: &id271
+          type:
+          - string
+          - 'null'
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - rehab_plan_id
+      - rehab_exercise_id
+      - date
+      - done
+      description: rehab_sessions 資源記錄
+    RehabSessionsInput:
+      type: object
+      properties:
+        rehab_plan_id: *id261
+        rehab_exercise_id: *id262
+        date: *id263
+        done: *id264
+        actual_sets: *id265
+        actual_reps: *id266
+        actual_time: *id267
+        discomfort_before: *id268
+        discomfort_after: *id269
+        load: *id270
+        notes: *id271
+      required:
+      - rehab_plan_id
+      - rehab_exercise_id
+      - date
+      - done
+    RehabSessionsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/RehabSessions'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    HealthDocuments:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        date: &id272
+          type: string
+          format: date
+        category: &id273
+          type: string
+          enum:
+          - 檢驗報告
+          - 影像報告
+          - 診斷證明
+          - 收據/費用
+          - 轉診單
+          - 病歷摘要
+          - 其他
+        title: &id274
+          type: string
+        provider: &id275
+          type:
+          - string
+          - 'null'
+        file_name: &id276
+          type:
+          - string
+          - 'null'
+        mime_type: &id277
+          type:
+          - string
+          - 'null'
+        file_data_url: &id278
+          type:
+          - string
+          - 'null'
+        file_size_kb: &id279
+          type:
+          - number
+          - 'null'
+          minimum: 0
+        appointment_id: &id280
+          type:
+          - string
+          - 'null'
+        notes: &id281
+          type:
+          - string
+          - 'null'
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - date
+      - category
+      - title
+      description: health_documents 資源記錄
+    HealthDocumentsInput:
+      type: object
+      properties:
+        date: *id272
+        category: *id273
+        title: *id274
+        provider: *id275
+        file_name: *id276
+        mime_type: *id277
+        file_data_url: *id278
+        file_size_kb: *id279
+        appointment_id: *id280
+        notes: *id281
+      required:
+      - date
+      - category
+      - title
+    HealthDocumentsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/HealthDocuments'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    Appointments:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        start_at: &id282
+          type: string
+          format: date-time
+        end_at: &id283
+          type:
+          - string
+          - 'null'
+          format: date-time
+        doctor: &id284
+          type:
+          - string
+          - 'null'
+        department: &id285
+          type:
+          - string
+          - 'null'
+        location: &id286
+          type: string
+        reason: &id287
+          type:
+          - string
+          - 'null'
+        status: &id288
+          type: string
+          enum:
+          - scheduled
+          - completed
+          - cancelled
+          - no_show
+        reminder_minutes_before: &id289
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 10080
+        follow_up_needed: &id290
+          type: boolean
+        notes: &id291
+          type:
+          - string
+          - 'null'
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - start_at
+      - location
+      - status
+      - follow_up_needed
+      description: appointments 資源記錄
+    AppointmentsInput:
+      type: object
+      properties:
+        start_at: *id282
+        end_at: *id283
+        doctor: *id284
+        department: *id285
+        location: *id286
+        reason: *id287
+        status: *id288
+        reminder_minutes_before: *id289
+        follow_up_needed: *id290
+        notes: *id291
+      required:
+      - start_at
+      - location
+      - status
+      - follow_up_needed
+    AppointmentsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Appointments'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    Activities:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        type: &id292
+          type: string
+          enum:
+          - daily_summary
+        occurred_at: &id293
+          type: string
+          format: date-time
+        date: &id294
+          type: string
+          format: date
+        steps: &id295
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 200000
+        walk_time_min: &id296
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 1440
+        distance_km: &id297
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 500
+        stand_time_min: &id298
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 1440
+        active_min: &id299
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 1440
+        sedentary_min: &id300
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 1440
+        source: &id301
+          type: string
+          enum:
+          - manual
+          - apple_health
+          - wearable
+          - import
+        is_primary: &id302
+          type: boolean
+        notes: &id303
+          type:
+          - string
+          - 'null'
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - type
+      - occurred_at
+      - date
+      - source
+      - is_primary
+      description: activities 資源記錄
+    ActivitiesInput:
+      type: object
+      properties:
+        type: *id292
+        occurred_at: *id293
+        date: *id294
+        steps: *id295
+        walk_time_min: *id296
+        distance_km: *id297
+        stand_time_min: *id298
+        active_min: *id299
+        sedentary_min: *id300
+        source: *id301
+        is_primary: *id302
+        notes: *id303
+      required:
+      - type
+      - occurred_at
+      - date
+      - source
+      - is_primary
+    ActivitiesPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Activities'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    UserProfile:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        display_name: &id304
+          type:
+          - string
+          - 'null'
+        height_cm: &id305
+          type:
+          - number
+          - 'null'
+          minimum: 50
+          maximum: 260
+        weight_kg: &id306
+          type:
+          - number
+          - 'null'
+          minimum: 20
+          maximum: 400
+        birth_year: &id307
+          type:
+          - integer
+          - 'null'
+          minimum: 1900
+          maximum: 2100
+        sex: &id308
+          type:
+          - string
+          - 'null'
+          enum:
+          - female
+          - male
+          - other
+          - unspecified
+          - null
+        activity_level: &id309
+          type:
+          - string
+          - 'null'
+          enum:
+          - sedentary
+          - light
+          - moderate
+          - active
+          - very_active
+          - null
+        fitness_goal: &id310
+          type:
+          - string
+          - 'null'
+          enum:
+          - lose_weight
+          - maintain
+          - build_muscle
+          - improve_endurance
+          - general_health
+          - null
+        water_goal_ml: &id311
+          type:
+          - integer
+          - 'null'
+          minimum: 500
+          maximum: 8000
+        sleep_goal_hours: &id312
+          type:
+          - number
+          - 'null'
+          minimum: 3
+          maximum: 14
+        step_goal_steps: &id313
+          type:
+          - integer
+          - 'null'
+          minimum: 1000
+          maximum: 50000
+        health_data_visibility: &id314
+          type: string
+          enum:
+          - private
+          - shared
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - health_data_visibility
+      description: Singleton：每位使用者僅一筆。
+    UserProfileInput:
+      type: object
+      properties:
+        display_name: *id304
+        height_cm: *id305
+        weight_kg: *id306
+        birth_year: *id307
+        sex: *id308
+        activity_level: *id309
+        fitness_goal: *id310
+        water_goal_ml: *id311
+        sleep_goal_hours: *id312
+        step_goal_steps: *id313
+        health_data_visibility: *id314
+      required:
+      - health_data_visibility
+    UserProfilePage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserProfile'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    UserPreferences:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        purposes: &id315
+          type: array
+          items:
+            type: string
+            enum:
+            - work
+            - health
+            - habit
+            - notes
+        enabled_modules: &id316
+          type: array
+          items:
+            type: string
+        onboarding_completed: &id317
+          type: boolean
+        onboarding_step: &id318
+          type: integer
+          minimum: 0
+          maximum: 4
+        onboarding_skipped: &id319
+          type: boolean
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - purposes
+      - enabled_modules
+      - onboarding_completed
+      - onboarding_step
+      - onboarding_skipped
+      description: Singleton：每位使用者僅一筆。
+    UserPreferencesInput:
+      type: object
+      properties:
+        purposes: *id315
+        enabled_modules: *id316
+        onboarding_completed: *id317
+        onboarding_step: *id318
+        onboarding_skipped: *id319
+      required:
+      - purposes
+      - enabled_modules
+      - onboarding_completed
+      - onboarding_step
+      - onboarding_skipped
+    UserPreferencesPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserPreferences'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    NotificationPrefs:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        channels: &id320
+          type: object
+          properties:
+            task_reminders:
+              type: boolean
+            habit_reminders:
+              type: boolean
+            medication_reminders:
+              type: boolean
+            water_reminders:
+              type: boolean
+            workout_reminders:
+              type: boolean
+            appointment_reminders:
+              type: boolean
+            weekly_summary:
+              type: boolean
+          required:
+          - task_reminders
+          - habit_reminders
+          - medication_reminders
+          - water_reminders
+          - workout_reminders
+          - appointment_reminders
+          - weekly_summary
+        quiet_hours_enabled: &id321
+          type: boolean
+        quiet_hours_start: &id322
+          type: string
+        quiet_hours_end: &id323
+          type: string
+        timezone: &id324
+          type: string
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - channels
+      - quiet_hours_enabled
+      - quiet_hours_start
+      - quiet_hours_end
+      - timezone
+      description: Singleton：每位使用者僅一筆。
+    NotificationPrefsInput:
+      type: object
+      properties:
+        channels: *id320
+        quiet_hours_enabled: *id321
+        quiet_hours_start: *id322
+        quiet_hours_end: *id323
+        timezone: *id324
+      required:
+      - channels
+      - quiet_hours_enabled
+      - quiet_hours_start
+      - quiet_hours_end
+      - timezone
+    NotificationPrefsPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationPrefs'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+    DashboardLayout:
+      type: object
+      properties:
+        id: *id001
+        created_at: *id002
+        updated_at: *id003
+        version: *id004
+        deleted: *id005
+        widgets: &id325
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+              visible:
+                type: boolean
+              order:
+                type: integer
+            required:
+            - key
+            - visible
+            - order
+      required:
+      - id
+      - created_at
+      - updated_at
+      - version
+      - deleted
+      - widgets
+      description: Singleton：每位使用者僅一筆。
+    DashboardLayoutInput:
+      type: object
+      properties:
+        widgets: *id325
+      required:
+      - widgets
+    DashboardLayoutPage:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardLayout'
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+        previous:
+          type:
+          - string
+          - 'null'
+      required:
+      - results
+      - count
+      - next
+      - previous
+security:
+- BearerAuth: []
+paths:
+  /api/v1/tasks/:
+    get:
+      tags:
+      - tasks
+      summary: 列出 tasks
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TasksPage'
+        '401': &id326
+          description: 未登入或 token 失效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      tags:
+      - tasks
+      summary: 建立 tasks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TasksInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tasks'
+        '401': *id326
+        '422': &id329
+          description: 驗證失敗（含 field_errors）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tasks/{id}/:
+    get:
+      tags:
+      - tasks
+      summary: 取得單筆 tasks
+      parameters:
+      - &id327
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tasks'
+        '401': *id326
+        '404': &id328
+          description: 資源不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      tags:
+      - tasks
+      summary: 局部更新 tasks
+      parameters:
+      - *id327
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: TasksInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tasks'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - tasks
+      summary: 刪除（軟刪除）tasks
+      parameters:
+      - *id327
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/tasks/{id}/complete/:
+    post:
+      tags:
+      - tasks
+      summary: tasks.complete — 標記完成：status→completed，completed_at→now
+      parameters:
+      - *id327
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tasks'
+        '401': *id326
+        '404': *id328
+  /api/v1/tasks/{id}/uncomplete/:
+    post:
+      tags:
+      - tasks
+      summary: tasks.uncomplete — 取消完成：status→planned，completed_at→null
+      parameters:
+      - *id327
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tasks'
+        '401': *id326
+        '404': *id328
+  /api/v1/tasks/{id}/snooze/:
+    post:
+      tags:
+      - tasks
+      summary: tasks.snooze — 延後 due_date
+      parameters:
+      - *id327
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tasks'
+        '401': *id326
+        '404': *id328
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                until:
+                  type:
+                  - string
+                  - 'null'
+                  format: date
+                days:
+                  type:
+                  - integer
+                  - 'null'
+                  minimum: 1
+  /api/v1/projects/:
+    get:
+      tags:
+      - projects
+      summary: 列出 projects
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectsPage'
+        '401': *id326
+    post:
+      tags:
+      - projects
+      summary: 建立 projects
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Projects'
+        '401': *id326
+        '422': *id329
+  /api/v1/projects/{id}/:
+    get:
+      tags:
+      - projects
+      summary: 取得單筆 projects
+      parameters:
+      - &id330
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Projects'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - projects
+      summary: 局部更新 projects
+      parameters:
+      - *id330
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: ProjectsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Projects'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - projects
+      summary: 刪除（軟刪除）projects
+      parameters:
+      - *id330
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/tags/:
+    get:
+      tags:
+      - tags
+      summary: 列出 tags
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagsPage'
+        '401': *id326
+    post:
+      tags:
+      - tags
+      summary: 建立 tags
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TagsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tags'
+        '401': *id326
+        '422': *id329
+  /api/v1/tags/{id}/:
+    get:
+      tags:
+      - tags
+      summary: 取得單筆 tags
+      parameters:
+      - &id331
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tags'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - tags
+      summary: 局部更新 tags
+      parameters:
+      - *id331
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: TagsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tags'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - tags
+      summary: 刪除（軟刪除）tags
+      parameters:
+      - *id331
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/calendar_events/:
+    get:
+      tags:
+      - calendar_events
+      summary: 列出 calendar_events
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarEventsPage'
+        '401': *id326
+    post:
+      tags:
+      - calendar_events
+      summary: 建立 calendar_events
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarEventsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarEvents'
+        '401': *id326
+        '422': *id329
+  /api/v1/calendar_events/{id}/:
+    get:
+      tags:
+      - calendar_events
+      summary: 取得單筆 calendar_events
+      parameters:
+      - &id332
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarEvents'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - calendar_events
+      summary: 局部更新 calendar_events
+      parameters:
+      - *id332
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: CalendarEventsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarEvents'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - calendar_events
+      summary: 刪除（軟刪除）calendar_events
+      parameters:
+      - *id332
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/timer_sessions/:
+    get:
+      tags:
+      - timer_sessions
+      summary: 列出 timer_sessions
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimerSessionsPage'
+        '401': *id326
+    post:
+      tags:
+      - timer_sessions
+      summary: 建立 timer_sessions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimerSessionsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimerSessions'
+        '401': *id326
+        '422': *id329
+  /api/v1/timer_sessions/{id}/:
+    get:
+      tags:
+      - timer_sessions
+      summary: 取得單筆 timer_sessions
+      parameters:
+      - &id333
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimerSessions'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - timer_sessions
+      summary: 局部更新 timer_sessions
+      parameters:
+      - *id333
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: TimerSessionsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimerSessions'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - timer_sessions
+      summary: 刪除（軟刪除）timer_sessions
+      parameters:
+      - *id333
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/timer_sessions/{id}/pause/:
+    post:
+      tags:
+      - timer_sessions
+      summary: timer_sessions.pause — running→paused，累積秒數併入 accumulated_seconds
+      parameters:
+      - *id333
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimerSessions'
+        '401': *id326
+        '404': *id328
+  /api/v1/timer_sessions/{id}/resume/:
+    post:
+      tags:
+      - timer_sessions
+      summary: timer_sessions.resume — paused→running
+      parameters:
+      - *id333
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimerSessions'
+        '401': *id326
+        '404': *id328
+  /api/v1/timer_sessions/{id}/stop/:
+    post:
+      tags:
+      - timer_sessions
+      summary: timer_sessions.stop — running/paused→completed
+      parameters:
+      - *id333
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimerSessions'
+        '401': *id326
+        '404': *id328
+  /api/v1/timer_sessions/{id}/cancel/:
+    post:
+      tags:
+      - timer_sessions
+      summary: timer_sessions.cancel — running/paused→cancelled
+      parameters:
+      - *id333
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimerSessions'
+        '401': *id326
+        '404': *id328
+  /api/v1/time_entries/:
+    get:
+      tags:
+      - time_entries
+      summary: 列出 time_entries
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeEntriesPage'
+        '401': *id326
+    post:
+      tags:
+      - time_entries
+      summary: 建立 time_entries
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeEntriesInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeEntries'
+        '401': *id326
+        '422': *id329
+  /api/v1/time_entries/{id}/:
+    get:
+      tags:
+      - time_entries
+      summary: 取得單筆 time_entries
+      parameters:
+      - &id334
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeEntries'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - time_entries
+      summary: 局部更新 time_entries
+      parameters:
+      - *id334
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: TimeEntriesInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeEntries'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - time_entries
+      summary: 刪除（軟刪除）time_entries
+      parameters:
+      - *id334
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/notes/:
+    get:
+      tags:
+      - notes
+      summary: 列出 notes
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotesPage'
+        '401': *id326
+    post:
+      tags:
+      - notes
+      summary: 建立 notes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotesInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notes'
+        '401': *id326
+        '422': *id329
+  /api/v1/notes/{id}/:
+    get:
+      tags:
+      - notes
+      summary: 取得單筆 notes
+      parameters:
+      - &id335
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notes'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - notes
+      summary: 局部更新 notes
+      parameters:
+      - *id335
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: NotesInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notes'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - notes
+      summary: 刪除（軟刪除）notes
+      parameters:
+      - *id335
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/notes/{id}/toggle_favorite/:
+    post:
+      tags:
+      - notes
+      summary: notes.toggleFavorite — 反轉 pinned
+      parameters:
+      - *id335
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notes'
+        '401': *id326
+        '404': *id328
+  /api/v1/notes/{id}/restore/:
+    post:
+      tags:
+      - notes
+      summary: notes.restore — 從垃圾桶復原：deleted→false
+      parameters:
+      - *id335
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notes'
+        '401': *id326
+        '404': *id328
+  /api/v1/note_versions/:
+    get:
+      tags:
+      - note_versions
+      summary: 列出 note_versions
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteVersionsPage'
+        '401': *id326
+    post:
+      tags:
+      - note_versions
+      summary: 建立 note_versions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NoteVersionsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteVersions'
+        '401': *id326
+        '422': *id329
+  /api/v1/note_versions/{id}/:
+    get:
+      tags:
+      - note_versions
+      summary: 取得單筆 note_versions
+      parameters:
+      - &id336
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteVersions'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - note_versions
+      summary: 局部更新 note_versions
+      parameters:
+      - *id336
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: NoteVersionsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteVersions'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - note_versions
+      summary: 刪除（軟刪除）note_versions
+      parameters:
+      - *id336
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/habits/:
+    get:
+      tags:
+      - habits
+      summary: 列出 habits
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HabitsPage'
+        '401': *id326
+    post:
+      tags:
+      - habits
+      summary: 建立 habits
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HabitsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Habits'
+        '401': *id326
+        '422': *id329
+  /api/v1/habits/{id}/:
+    get:
+      tags:
+      - habits
+      summary: 取得單筆 habits
+      parameters:
+      - &id337
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Habits'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - habits
+      summary: 局部更新 habits
+      parameters:
+      - *id337
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: HabitsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Habits'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - habits
+      summary: 刪除（軟刪除）habits
+      parameters:
+      - *id337
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/habits/{id}/archive/:
+    post:
+      tags:
+      - habits
+      summary: habits.archive — 反轉 archived
+      parameters:
+      - *id337
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Habits'
+        '401': *id326
+        '404': *id328
+  /api/v1/habit_logs/:
+    get:
+      tags:
+      - habit_logs
+      summary: 列出 habit_logs
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HabitLogsPage'
+        '401': *id326
+    post:
+      tags:
+      - habit_logs
+      summary: 建立 habit_logs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HabitLogsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HabitLogs'
+        '401': *id326
+        '422': *id329
+  /api/v1/habit_logs/{id}/:
+    get:
+      tags:
+      - habit_logs
+      summary: 取得單筆 habit_logs
+      parameters:
+      - &id338
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HabitLogs'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - habit_logs
+      summary: 局部更新 habit_logs
+      parameters:
+      - *id338
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: HabitLogsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HabitLogs'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - habit_logs
+      summary: 刪除（軟刪除）habit_logs
+      parameters:
+      - *id338
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/body_metrics/:
+    get:
+      tags:
+      - body_metrics
+      summary: 列出 body_metrics
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BodyMetricsPage'
+        '401': *id326
+    post:
+      tags:
+      - body_metrics
+      summary: 建立 body_metrics
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BodyMetricsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BodyMetrics'
+        '401': *id326
+        '422': *id329
+  /api/v1/body_metrics/{id}/:
+    get:
+      tags:
+      - body_metrics
+      summary: 取得單筆 body_metrics
+      parameters:
+      - &id339
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BodyMetrics'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - body_metrics
+      summary: 局部更新 body_metrics
+      parameters:
+      - *id339
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: BodyMetricsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BodyMetrics'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - body_metrics
+      summary: 刪除（軟刪除）body_metrics
+      parameters:
+      - *id339
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/water_logs/:
+    get:
+      tags:
+      - water_logs
+      summary: 列出 water_logs
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WaterLogsPage'
+        '401': *id326
+    post:
+      tags:
+      - water_logs
+      summary: 建立 water_logs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WaterLogsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WaterLogs'
+        '401': *id326
+        '422': *id329
+  /api/v1/water_logs/{id}/:
+    get:
+      tags:
+      - water_logs
+      summary: 取得單筆 water_logs
+      parameters:
+      - &id340
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WaterLogs'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - water_logs
+      summary: 局部更新 water_logs
+      parameters:
+      - *id340
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: WaterLogsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WaterLogs'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - water_logs
+      summary: 刪除（軟刪除）water_logs
+      parameters:
+      - *id340
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/meal_logs/:
+    get:
+      tags:
+      - meal_logs
+      summary: 列出 meal_logs
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MealLogsPage'
+        '401': *id326
+    post:
+      tags:
+      - meal_logs
+      summary: 建立 meal_logs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MealLogsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MealLogs'
+        '401': *id326
+        '422': *id329
+  /api/v1/meal_logs/{id}/:
+    get:
+      tags:
+      - meal_logs
+      summary: 取得單筆 meal_logs
+      parameters:
+      - &id341
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MealLogs'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - meal_logs
+      summary: 局部更新 meal_logs
+      parameters:
+      - *id341
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: MealLogsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MealLogs'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - meal_logs
+      summary: 刪除（軟刪除）meal_logs
+      parameters:
+      - *id341
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/sleep_logs/:
+    get:
+      tags:
+      - sleep_logs
+      summary: 列出 sleep_logs
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SleepLogsPage'
+        '401': *id326
+    post:
+      tags:
+      - sleep_logs
+      summary: 建立 sleep_logs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SleepLogsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SleepLogs'
+        '401': *id326
+        '422': *id329
+  /api/v1/sleep_logs/{id}/:
+    get:
+      tags:
+      - sleep_logs
+      summary: 取得單筆 sleep_logs
+      parameters:
+      - &id342
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SleepLogs'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - sleep_logs
+      summary: 局部更新 sleep_logs
+      parameters:
+      - *id342
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: SleepLogsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SleepLogs'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - sleep_logs
+      summary: 刪除（軟刪除）sleep_logs
+      parameters:
+      - *id342
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/symptom_defs/:
+    get:
+      tags:
+      - symptom_defs
+      summary: 列出 symptom_defs
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SymptomDefsPage'
+        '401': *id326
+    post:
+      tags:
+      - symptom_defs
+      summary: 建立 symptom_defs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SymptomDefsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SymptomDefs'
+        '401': *id326
+        '422': *id329
+  /api/v1/symptom_defs/{id}/:
+    get:
+      tags:
+      - symptom_defs
+      summary: 取得單筆 symptom_defs
+      parameters:
+      - &id343
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SymptomDefs'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - symptom_defs
+      summary: 局部更新 symptom_defs
+      parameters:
+      - *id343
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: SymptomDefsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SymptomDefs'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - symptom_defs
+      summary: 刪除（軟刪除）symptom_defs
+      parameters:
+      - *id343
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/symptom_logs/:
+    get:
+      tags:
+      - symptom_logs
+      summary: 列出 symptom_logs
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SymptomLogsPage'
+        '401': *id326
+    post:
+      tags:
+      - symptom_logs
+      summary: 建立 symptom_logs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SymptomLogsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SymptomLogs'
+        '401': *id326
+        '422': *id329
+  /api/v1/symptom_logs/{id}/:
+    get:
+      tags:
+      - symptom_logs
+      summary: 取得單筆 symptom_logs
+      parameters:
+      - &id344
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SymptomLogs'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - symptom_logs
+      summary: 局部更新 symptom_logs
+      parameters:
+      - *id344
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: SymptomLogsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SymptomLogs'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - symptom_logs
+      summary: 刪除（軟刪除）symptom_logs
+      parameters:
+      - *id344
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/medications/:
+    get:
+      tags:
+      - medications
+      summary: 列出 medications
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationsPage'
+        '401': *id326
+    post:
+      tags:
+      - medications
+      summary: 建立 medications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medications'
+        '401': *id326
+        '422': *id329
+  /api/v1/medications/{id}/:
+    get:
+      tags:
+      - medications
+      summary: 取得單筆 medications
+      parameters:
+      - &id345
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medications'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - medications
+      summary: 局部更新 medications
+      parameters:
+      - *id345
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: MedicationsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medications'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - medications
+      summary: 刪除（軟刪除）medications
+      parameters:
+      - *id345
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/medications/{id}/toggle-active/:
+    post:
+      tags:
+      - medications
+      summary: medications.toggleActive — 反轉 active
+      parameters:
+      - *id345
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medications'
+        '401': *id326
+        '404': *id328
+  /api/v1/supplements/:
+    get:
+      tags:
+      - supplements
+      summary: 列出 supplements
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplementsPage'
+        '401': *id326
+    post:
+      tags:
+      - supplements
+      summary: 建立 supplements
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplementsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplements'
+        '401': *id326
+        '422': *id329
+  /api/v1/supplements/{id}/:
+    get:
+      tags:
+      - supplements
+      summary: 取得單筆 supplements
+      parameters:
+      - &id346
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplements'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - supplements
+      summary: 局部更新 supplements
+      parameters:
+      - *id346
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: SupplementsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplements'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - supplements
+      summary: 刪除（軟刪除）supplements
+      parameters:
+      - *id346
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/supplements/{id}/toggle-active/:
+    post:
+      tags:
+      - supplements
+      summary: supplements.toggleActive — 反轉 active
+      parameters:
+      - *id346
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplements'
+        '401': *id326
+        '404': *id328
+  /api/v1/medication_schedules/:
+    get:
+      tags:
+      - medication_schedules
+      summary: 列出 medication_schedules
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationSchedulesPage'
+        '401': *id326
+    post:
+      tags:
+      - medication_schedules
+      summary: 建立 medication_schedules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationSchedulesInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationSchedules'
+        '401': *id326
+        '422': *id329
+  /api/v1/medication_schedules/{id}/:
+    get:
+      tags:
+      - medication_schedules
+      summary: 取得單筆 medication_schedules
+      parameters:
+      - &id347
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationSchedules'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - medication_schedules
+      summary: 局部更新 medication_schedules
+      parameters:
+      - *id347
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: MedicationSchedulesInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationSchedules'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - medication_schedules
+      summary: 刪除（軟刪除）medication_schedules
+      parameters:
+      - *id347
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/medication_logs/:
+    get:
+      tags:
+      - medication_logs
+      summary: 列出 medication_logs
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationLogsPage'
+        '401': *id326
+    post:
+      tags:
+      - medication_logs
+      summary: 建立 medication_logs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationLogsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationLogs'
+        '401': *id326
+        '422': *id329
+  /api/v1/medication_logs/{id}/:
+    get:
+      tags:
+      - medication_logs
+      summary: 取得單筆 medication_logs
+      parameters:
+      - &id348
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationLogs'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - medication_logs
+      summary: 局部更新 medication_logs
+      parameters:
+      - *id348
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: MedicationLogsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationLogs'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - medication_logs
+      summary: 刪除（軟刪除）medication_logs
+      parameters:
+      - *id348
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/workouts/:
+    get:
+      tags:
+      - workouts
+      summary: 列出 workouts
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkoutsPage'
+        '401': *id326
+    post:
+      tags:
+      - workouts
+      summary: 建立 workouts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkoutsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workouts'
+        '401': *id326
+        '422': *id329
+  /api/v1/workouts/{id}/:
+    get:
+      tags:
+      - workouts
+      summary: 取得單筆 workouts
+      parameters:
+      - &id349
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workouts'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - workouts
+      summary: 局部更新 workouts
+      parameters:
+      - *id349
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: WorkoutsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workouts'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - workouts
+      summary: 刪除（軟刪除）workouts
+      parameters:
+      - *id349
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/exercise_defs/:
+    get:
+      tags:
+      - exercise_defs
+      summary: 列出 exercise_defs
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseDefsPage'
+        '401': *id326
+    post:
+      tags:
+      - exercise_defs
+      summary: 建立 exercise_defs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExerciseDefsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseDefs'
+        '401': *id326
+        '422': *id329
+  /api/v1/exercise_defs/{id}/:
+    get:
+      tags:
+      - exercise_defs
+      summary: 取得單筆 exercise_defs
+      parameters:
+      - &id350
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseDefs'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - exercise_defs
+      summary: 局部更新 exercise_defs
+      parameters:
+      - *id350
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: ExerciseDefsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseDefs'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - exercise_defs
+      summary: 刪除（軟刪除）exercise_defs
+      parameters:
+      - *id350
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/workout_exercises/:
+    get:
+      tags:
+      - workout_exercises
+      summary: 列出 workout_exercises
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkoutExercisesPage'
+        '401': *id326
+    post:
+      tags:
+      - workout_exercises
+      summary: 建立 workout_exercises
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkoutExercisesInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkoutExercises'
+        '401': *id326
+        '422': *id329
+  /api/v1/workout_exercises/{id}/:
+    get:
+      tags:
+      - workout_exercises
+      summary: 取得單筆 workout_exercises
+      parameters:
+      - &id351
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkoutExercises'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - workout_exercises
+      summary: 局部更新 workout_exercises
+      parameters:
+      - *id351
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: WorkoutExercisesInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkoutExercises'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - workout_exercises
+      summary: 刪除（軟刪除）workout_exercises
+      parameters:
+      - *id351
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/workout_sets/:
+    get:
+      tags:
+      - workout_sets
+      summary: 列出 workout_sets
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkoutSetsPage'
+        '401': *id326
+    post:
+      tags:
+      - workout_sets
+      summary: 建立 workout_sets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkoutSetsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkoutSets'
+        '401': *id326
+        '422': *id329
+  /api/v1/workout_sets/{id}/:
+    get:
+      tags:
+      - workout_sets
+      summary: 取得單筆 workout_sets
+      parameters:
+      - &id352
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkoutSets'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - workout_sets
+      summary: 局部更新 workout_sets
+      parameters:
+      - *id352
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: WorkoutSetsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkoutSets'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - workout_sets
+      summary: 刪除（軟刪除）workout_sets
+      parameters:
+      - *id352
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/rehab_plans/:
+    get:
+      tags:
+      - rehab_plans
+      summary: 列出 rehab_plans
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RehabPlansPage'
+        '401': *id326
+    post:
+      tags:
+      - rehab_plans
+      summary: 建立 rehab_plans
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RehabPlansInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RehabPlans'
+        '401': *id326
+        '422': *id329
+  /api/v1/rehab_plans/{id}/:
+    get:
+      tags:
+      - rehab_plans
+      summary: 取得單筆 rehab_plans
+      parameters:
+      - &id353
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RehabPlans'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - rehab_plans
+      summary: 局部更新 rehab_plans
+      parameters:
+      - *id353
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: RehabPlansInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RehabPlans'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - rehab_plans
+      summary: 刪除（軟刪除）rehab_plans
+      parameters:
+      - *id353
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/rehab_plans/{id}/toggle-active/:
+    post:
+      tags:
+      - rehab_plans
+      summary: rehab_plans.toggleActive — 反轉 active（暫停／恢復，不刪除歷史）
+      parameters:
+      - *id353
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RehabPlans'
+        '401': *id326
+        '404': *id328
+  /api/v1/rehab_exercises/:
+    get:
+      tags:
+      - rehab_exercises
+      summary: 列出 rehab_exercises
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RehabExercisesPage'
+        '401': *id326
+    post:
+      tags:
+      - rehab_exercises
+      summary: 建立 rehab_exercises
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RehabExercisesInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RehabExercises'
+        '401': *id326
+        '422': *id329
+  /api/v1/rehab_exercises/{id}/:
+    get:
+      tags:
+      - rehab_exercises
+      summary: 取得單筆 rehab_exercises
+      parameters:
+      - &id354
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RehabExercises'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - rehab_exercises
+      summary: 局部更新 rehab_exercises
+      parameters:
+      - *id354
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: RehabExercisesInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RehabExercises'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - rehab_exercises
+      summary: 刪除（軟刪除）rehab_exercises
+      parameters:
+      - *id354
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/rehab_sessions/:
+    get:
+      tags:
+      - rehab_sessions
+      summary: 列出 rehab_sessions
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RehabSessionsPage'
+        '401': *id326
+    post:
+      tags:
+      - rehab_sessions
+      summary: 建立 rehab_sessions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RehabSessionsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RehabSessions'
+        '401': *id326
+        '422': *id329
+  /api/v1/rehab_sessions/{id}/:
+    get:
+      tags:
+      - rehab_sessions
+      summary: 取得單筆 rehab_sessions
+      parameters:
+      - &id355
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RehabSessions'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - rehab_sessions
+      summary: 局部更新 rehab_sessions
+      parameters:
+      - *id355
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: RehabSessionsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RehabSessions'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - rehab_sessions
+      summary: 刪除（軟刪除）rehab_sessions
+      parameters:
+      - *id355
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/rehab_sessions/{id}/toggle-done/:
+    post:
+      tags:
+      - rehab_sessions
+      summary: rehab_sessions.toggleDone — 反轉 done
+      parameters:
+      - *id355
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RehabSessions'
+        '401': *id326
+        '404': *id328
+  /api/v1/health_documents/:
+    get:
+      tags:
+      - health_documents
+      summary: 列出 health_documents
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthDocumentsPage'
+        '401': *id326
+    post:
+      tags:
+      - health_documents
+      summary: 建立 health_documents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HealthDocumentsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthDocuments'
+        '401': *id326
+        '422': *id329
+  /api/v1/health_documents/{id}/:
+    get:
+      tags:
+      - health_documents
+      summary: 取得單筆 health_documents
+      parameters:
+      - &id356
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthDocuments'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - health_documents
+      summary: 局部更新 health_documents
+      parameters:
+      - *id356
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: HealthDocumentsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthDocuments'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - health_documents
+      summary: 刪除（軟刪除）health_documents
+      parameters:
+      - *id356
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/appointments/:
+    get:
+      tags:
+      - appointments
+      summary: 列出 appointments
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentsPage'
+        '401': *id326
+    post:
+      tags:
+      - appointments
+      summary: 建立 appointments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointments'
+        '401': *id326
+        '422': *id329
+  /api/v1/appointments/{id}/:
+    get:
+      tags:
+      - appointments
+      summary: 取得單筆 appointments
+      parameters:
+      - &id357
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointments'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - appointments
+      summary: 局部更新 appointments
+      parameters:
+      - *id357
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: AppointmentsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointments'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - appointments
+      summary: 刪除（軟刪除）appointments
+      parameters:
+      - *id357
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/activities/:
+    get:
+      tags:
+      - activities
+      summary: 列出 activities
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivitiesPage'
+        '401': *id326
+    post:
+      tags:
+      - activities
+      summary: 建立 activities
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivitiesInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Activities'
+        '401': *id326
+        '422': *id329
+  /api/v1/activities/{id}/:
+    get:
+      tags:
+      - activities
+      summary: 取得單筆 activities
+      parameters:
+      - &id358
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Activities'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - activities
+      summary: 局部更新 activities
+      parameters:
+      - *id358
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: ActivitiesInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Activities'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - activities
+      summary: 刪除（軟刪除）activities
+      parameters:
+      - *id358
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/user_profile/:
+    get:
+      tags:
+      - user_profile
+      summary: 列出 user_profile
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfilePage'
+        '401': *id326
+    post:
+      tags:
+      - user_profile
+      summary: 建立 user_profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfileInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401': *id326
+        '422': *id329
+  /api/v1/user_profile/{id}/:
+    get:
+      tags:
+      - user_profile
+      summary: 取得單筆 user_profile
+      parameters:
+      - &id359
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - user_profile
+      summary: 局部更新 user_profile
+      parameters:
+      - *id359
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: UserProfileInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - user_profile
+      summary: 刪除（軟刪除）user_profile
+      parameters:
+      - *id359
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/user_preferences/:
+    get:
+      tags:
+      - user_preferences
+      summary: 列出 user_preferences
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferencesPage'
+        '401': *id326
+    post:
+      tags:
+      - user_preferences
+      summary: 建立 user_preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPreferencesInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferences'
+        '401': *id326
+        '422': *id329
+  /api/v1/user_preferences/{id}/:
+    get:
+      tags:
+      - user_preferences
+      summary: 取得單筆 user_preferences
+      parameters:
+      - &id360
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferences'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - user_preferences
+      summary: 局部更新 user_preferences
+      parameters:
+      - *id360
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: UserPreferencesInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferences'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - user_preferences
+      summary: 刪除（軟刪除）user_preferences
+      parameters:
+      - *id360
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/notification_prefs/:
+    get:
+      tags:
+      - notification_prefs
+      summary: 列出 notification_prefs
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPrefsPage'
+        '401': *id326
+    post:
+      tags:
+      - notification_prefs
+      summary: 建立 notification_prefs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationPrefsInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPrefs'
+        '401': *id326
+        '422': *id329
+  /api/v1/notification_prefs/{id}/:
+    get:
+      tags:
+      - notification_prefs
+      summary: 取得單筆 notification_prefs
+      parameters:
+      - &id361
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPrefs'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - notification_prefs
+      summary: 局部更新 notification_prefs
+      parameters:
+      - *id361
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: NotificationPrefsInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPrefs'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - notification_prefs
+      summary: 刪除（軟刪除）notification_prefs
+      parameters:
+      - *id361
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/dashboard_layout/:
+    get:
+      tags:
+      - dashboard_layout
+      summary: 列出 dashboard_layout
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: ordering
+        in: query
+        schema:
+          type: string
+        description: 欄位名；前綴 - 表示降冪
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: deleted
+        in: query
+        schema:
+          type: string
+        description: '"true" 才包含已軟刪除紀錄'
+      responses:
+        '200':
+          description: 分頁列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardLayoutPage'
+        '401': *id326
+    post:
+      tags:
+      - dashboard_layout
+      summary: 建立 dashboard_layout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DashboardLayoutInput'
+      responses:
+        '201':
+          description: 已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardLayout'
+        '401': *id326
+        '422': *id329
+  /api/v1/dashboard_layout/{id}/:
+    get:
+      tags:
+      - dashboard_layout
+      summary: 取得單筆 dashboard_layout
+      parameters:
+      - &id362
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: 記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardLayout'
+        '401': *id326
+        '404': *id328
+    patch:
+      tags:
+      - dashboard_layout
+      summary: 局部更新 dashboard_layout
+      parameters:
+      - *id362
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: DashboardLayoutInput 之任意子集（局部更新）
+      responses:
+        '200':
+          description: 更新後記錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardLayout'
+        '401': *id326
+        '404': *id328
+        '422': *id329
+    delete:
+      tags:
+      - dashboard_layout
+      summary: 刪除（軟刪除）dashboard_layout
+      parameters:
+      - *id362
+      responses:
+        '204':
+          description: 已軟刪除（deleted=true, version+1），無回應內容
+        '401': *id326
+        '404': *id328
+  /api/v1/auth/register/:
+    post:
+      tags:
+      - auth
+      summary: 註冊新帳號
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        '200':
+          description: 註冊成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '422': *id329
+  /api/v1/auth/login/:
+    post:
+      tags:
+      - auth
+      summary: 登入
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        '200':
+          description: 登入成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: 帳號或密碼錯誤
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/auth/logout/:
+    post:
+      tags:
+      - auth
+      summary: 登出
+      responses:
+        '204':
+          description: 已登出
+  /api/v1/export/:
+    get:
+      tags:
+      - account
+      summary: 匯出目前帳號完整資料
+      responses:
+        '200':
+          description: 所有資源表（未刪除紀錄）
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: object
+        '401': *id326
+  /api/v1/account/purge/:
+    post:
+      tags:
+      - account
+      summary: 永久刪除帳號所有資料（不可復原）
+      responses:
+        '204':
+          description: 已刪除
+        '401': *id326
