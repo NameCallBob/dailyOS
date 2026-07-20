@@ -14,8 +14,6 @@ router.register(
     views.MedicationScheduleViewSet,
     basename="medication_schedules",
 )
-router.register(
-    r"medication_logs", views.MedicationLogViewSet, basename="medication_logs"
-)
+router.register(r"medication_logs", views.MedicationLogViewSet, basename="medication_logs")
 
 urlpatterns = router.urls

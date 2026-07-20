@@ -153,9 +153,7 @@ class MedicationScheduleSerializer(BaseModelSerializer):
         if medication_id is not None and request is not None:
             exists = model.all_objects.filter(id=medication_id, user=request.user).exists()
             if not exists:
-                raise serializers.ValidationError(
-                    {"medication_id": ["找不到指定的藥物/保健品。"]}
-                )
+                raise serializers.ValidationError({"medication_id": ["找不到指定的藥物/保健品。"]})
         return attrs
 
 
@@ -209,17 +207,16 @@ class MedicationLogSerializer(BaseModelSerializer):
         if medication_id is not None and request is not None:
             source_obj = model.all_objects.filter(id=medication_id, user=request.user).first()
             if source_obj is None:
-                raise serializers.ValidationError(
-                    {"medication_id": ["找不到指定的藥物/保健品。"]}
-                )
+                raise serializers.ValidationError({"medication_id": ["找不到指定的藥物/保健品。"]})
 
         status_value = attrs.get("status", getattr(self.instance, "status", None))
         if status_value == "taken" and not attrs.get(
             "taken_at", getattr(self.instance, "taken_at", None)
         ):
-            attrs["taken_at"] = attrs.get(
-                "scheduled_for", getattr(self.instance, "scheduled_for", None)
-            ) or timezone.now()
+            attrs["taken_at"] = (
+                attrs.get("scheduled_for", getattr(self.instance, "scheduled_for", None))
+                or timezone.now()
+            )
 
         if self.instance is None and attrs.get("quantity") is None and source_obj is not None:
             attrs["quantity"] = source_obj.dose

@@ -55,9 +55,7 @@ def test_update_other_users_record_returns_404():
     record = ActivityFactory(user=owner)
 
     client = _authed_client(intruder)
-    response = client.patch(
-        f"/api/v1/activities/{record.id}/", {"steps": 100}, format="json"
-    )
+    response = client.patch(f"/api/v1/activities/{record.id}/", {"steps": 100}, format="json")
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -67,9 +65,7 @@ def test_update_increments_version():
     record = ActivityFactory(user=user)
     client = _authed_client(user)
 
-    response = client.patch(
-        f"/api/v1/activities/{record.id}/", {"steps": 12000}, format="json"
-    )
+    response = client.patch(f"/api/v1/activities/{record.id}/", {"steps": 12000}, format="json")
 
     assert response.status_code == status.HTTP_200_OK
     assert response.data["version"] == record.version + 1

@@ -108,7 +108,7 @@ def test_can_link_to_own_appointment():
     response = client.post("/api/v1/health_documents/", payload, format="json")
 
     assert response.status_code == status.HTTP_201_CREATED, response.data
-    assert response.data["appointment_id"] == str(appointment.id)
+    assert str(response.data["appointment_id"]) == str(appointment.id)
 
 
 def test_cannot_link_to_other_users_appointment_idor_protection():
