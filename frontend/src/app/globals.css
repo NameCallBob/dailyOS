@@ -1,0 +1,214 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   DailyOS Design Tokens
+   白底黑字 + 灰階 + 單一低彩度 accent；雜誌式編排字級。
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* --- Color: grayscale ink/paper --- */
+  --color-ink: #111111;
+  --color-ink-soft: #3a3a3a;
+  --color-ink-muted: #6b6b6b;
+  --color-ink-faint: #9a9a9a;
+
+  --color-paper: #ffffff;
+  --color-paper-raised: #ffffff;
+  --color-paper-sunken: #f5f4f2;
+
+  --color-line: #e4e2de;
+  --color-line-strong: #c9c6c0;
+
+  /* --- Single low-saturation accent (muted clay/ochre) --- */
+  --color-accent: #8a6a52;
+  --color-accent-soft: #efe8e1;
+  --color-accent-ink: #ffffff;
+
+  --color-danger: #a3372e;
+  --color-danger-soft: #f6e6e4;
+  --color-success: #3f6b4a;
+  --color-success-soft: #e6ede8;
+  --color-warning: #93701f;
+  --color-warning-soft: #f5edda;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --radius-xl: 22px;
+
+  --shadow-sm: 0 1px 2px rgba(17, 17, 17, 0.06);
+  --shadow-md: 0 4px 16px rgba(17, 17, 17, 0.08);
+  --shadow-lg: 0 12px 32px rgba(17, 17, 17, 0.12);
+
+  --space-gutter: 1.5rem;
+
+  /* --- Typography families --- */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC",
+    "Noto Sans TC", "Microsoft JhengHei", Helvetica, Arial, sans-serif;
+  --font-serif:
+    "Iowan Old Style", "Songti TC", "Noto Serif TC", Georgia, "Times New Roman",
+    serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Roboto Mono",
+    monospace;
+
+  /* --- Magazine type scale --- */
+  --fs-display: 3.25rem;
+  --lh-display: 1.04;
+  --ls-display: -0.02em;
+  --fw-display: 600;
+
+  --fs-h1: 2.25rem;
+  --lh-h1: 1.12;
+  --ls-h1: -0.015em;
+  --fw-h1: 600;
+
+  --fs-h2: 1.5rem;
+  --lh-h2: 1.2;
+  --ls-h2: -0.01em;
+  --fw-h2: 600;
+
+  --fs-h3: 1.125rem;
+  --lh-h3: 1.3;
+  --ls-h3: -0.005em;
+  --fw-h3: 600;
+
+  --fs-body: 0.9375rem;
+  --lh-body: 1.6;
+  --ls-body: 0;
+
+  --fs-caption: 0.8125rem;
+  --lh-caption: 1.45;
+  --ls-caption: 0.005em;
+
+  --fs-label: 0.75rem;
+  --lh-label: 1.3;
+  --ls-label: 0.06em;
+  --fw-label: 600;
+
+  --fs-mono: 0.8125rem;
+  --lh-mono: 1.5;
+
+  --fs-numeric: 1rem;
+  --lh-numeric: 1.2;
+  --fw-numeric: 600;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-ink: #f2f1ee;
+  --color-ink-soft: #d4d2cc;
+  --color-ink-muted: #a5a29b;
+  --color-ink-faint: #726f68;
+
+  --color-paper: #121212;
+  --color-paper-raised: #1a1a1a;
+  --color-paper-sunken: #0c0c0c;
+
+  --color-line: #2a2a28;
+  --color-line-strong: #3c3b37;
+
+  --color-accent: #c8a688;
+  --color-accent-soft: #2c2620;
+  --color-accent-ink: #171310;
+
+  --color-danger: #e2867c;
+  --color-danger-soft: #2c1a18;
+  --color-success: #8fbb9b;
+  --color-success-soft: #172119;
+  --color-warning: #d8b869;
+  --color-warning-soft: #2a2416;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-ink: #f2f1ee;
+    --color-ink-soft: #d4d2cc;
+    --color-ink-muted: #a5a29b;
+    --color-ink-faint: #726f68;
+
+    --color-paper: #121212;
+    --color-paper-raised: #1a1a1a;
+    --color-paper-sunken: #0c0c0c;
+
+    --color-line: #2a2a28;
+    --color-line-strong: #3c3b37;
+
+    --color-accent: #c8a688;
+    --color-accent-soft: #2c2620;
+    --color-accent-ink: #171310;
+
+    --color-danger: #e2867c;
+    --color-danger-soft: #2c1a18;
+    --color-success: #8fbb9b;
+    --color-success-soft: #172119;
+    --color-warning: #d8b869;
+    --color-warning-soft: #2a2416;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+  }
+}
+
+* {
+  border-color: var(--color-line);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+
+.font-tabular,
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Focus states — keyboard visible, never color-only */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Scrollbars kept minimal / neutral */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-line-strong);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
