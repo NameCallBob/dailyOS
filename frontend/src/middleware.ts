@@ -40,7 +40,8 @@ export function middleware(request: NextRequest) {
 
   const mode = request.cookies.get(MODE_COOKIE)?.value;
 
-  if (mode !== "trial" && mode !== "auth") {
+  // trial / local 皆為本地資料模式，免 token 即可進入；其他值視為未設定，導回落地頁。
+  if (mode !== "trial" && mode !== "local" && mode !== "auth") {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     url.search = "";
