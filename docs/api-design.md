@@ -143,6 +143,130 @@ POST /api/v1/{name}/{id}/{action}/    -> 200 更新後的完整 record
 
 ---
 
+## 1.2 Sync 端點（本機模式登入後可選開啟同步）
+
+> 對應前端程式碼：`frontend/src/features/sync/**`（僅該目錄可讀寫此功能，不影響既有 `lib/resource.ts` 的 trial/auth 兩種既有 transport）。
+> 對應 OpenAPI：`docs/openapi.yaml` 的 `Sync*` schema 與 `/api/v1/sync/` 路徑。
+> 衝突策略總覽見 `docs/offline-sync.md` §3；本節只定義「傳輸格式」。
+
+**適用情境**：使用者處於「本機（local）模式」且已登入（`daios_token` 存在）、並在設定頁手動開啟「雲端同步」開關時，前端才會呼叫本節端點。試用模式與一般登入（auth）模式皆不使用此端點——試用模式資料本來就是本機 demo 不上傳；auth 模式資料本身已即時透過 0～2 節既有的資源 CRUD 端點直接存於伺服器，不需要再疊加一層佇列同步。
+
+**認證**：與其餘端點相同，帶 `Authorization: Bearer <daios_token>`；未帶或無效回 401。
+
+### 1.2.1 `POST /api/v1/sync/` — Push（上傳待同步佇列，批次）
+
+前端把本機 Dexie 佇列（`sync_mutations` 表）中所有 `pending`／`failed` 狀態的項目一次性批次送出。
+
+請求 body：
+
+```json
+{
+  "mutations": [
+    {
+      "client_mutation_id": "b3f1c2e4-...",
+      "resource": "notes",
+      "op": "update",
+      "record_id": "8f2a...",
+      "payload": { "id": "8f2a...", "title": "...", "content": "...", "version": 4, "updated_at": "2026-07-20T03:11:00.000Z", "deleted": false },
+      "client_updated_at": "2026-07-20T03:11:00.000Z"
+    }
+  ]
+}
+```
+
+| 欄位 | 型別 | 說明 |
+| --- | --- | --- |
+| `mutations[].client_mutation_id` | string (uuid) | **冪等鍵**。同一筆本地佇列項目重試多次時，此值固定不變；後端必須用它去重——若同一個 `client_mutation_id` 先前已被成功套用（`applied`），再次收到時**不得重複套用**，直接回傳當初的結果（同樣的 `status`／`record`）。建議後端以 `(user_id, client_mutation_id)` 建唯一索引作為去重依據。 |
+| `mutations[].resource` | string | 資源名稱，值域同 `docs/api-design.md` 第 2 節資源總表（34 個資源之一）。 |
+| `mutations[].op` | enum `create`\|`update`\|`remove` | 操作種類；`remove` 為軟刪除語意（同 0.7 節）。 |
+| `mutations[].record_id` | string (uuid) | 該筆記錄的 `id`（前端產生的 client-generated id，見 0.7 節）。後端以此做 upsert，不自行改配 id。 |
+| `mutations[].payload` | object \| null | `create`/`update` 帶完整記錄（camelCase 欄位已由前端轉為 snake_case，形狀同各資源 `PATCH` body）；`remove` 可能為 `null` 或帶刪除當下的完整快照（供後端比對版本）。 |
+| `mutations[].client_updated_at` | string (ISO 8601) \| null | 前端裝置當下記錄的 `updated_at`；**僅供後端比對用**，時鐘偏差以第 1.2.3 節「伺服器時間為準」規則處理，後端不得直接信任此值做為最終 `updated_at`。 |
+
+回應（`200`）：
+
+```json
+{
+  "results": [
+    {
+      "client_mutation_id": "b3f1c2e4-...",
+      "status": "applied",
+      "record": { "id": "8f2a...", "version": 5, "updated_at": "2026-07-20T03:11:02.531Z", "...": "..." }
+    },
+    {
+      "client_mutation_id": "c9a0...",
+      "status": "conflict",
+      "conflict": {
+        "strategy": "manual_merge",
+        "server_record": { "...": "..." },
+        "server_version": 6,
+        "server_updated_at": "2026-07-20T03:10:55.000Z"
+      }
+    },
+    {
+      "client_mutation_id": "d1b2...",
+      "status": "rejected",
+      "error": { "code": "validation_error", "message": "標題不可為空" }
+    }
+  ],
+  "cursor": "2026-07-20T03:11:02.531Z:8f2a..."
+}
+```
+
+| `results[].status` | 說明 |
+| --- | --- |
+| `applied` | 已成功套用，`record` 為套用後的最終完整記錄（含後端補齊的 `version`／`updated_at`）。前端會把此筆從本地佇列移除（視為已同步）。 |
+| `conflict` | 依 §3.1/3.3 衝突策略判定為衝突：一般資源後端應直接以 **server-wins** 套用伺服器版本（此時可視同 `applied` 處理，`conflict.strategy` 回 `"server_wins"`，不需要前端額外介入）；`notes`／`note_versions` 等高價值長文字資源必須回 `conflict.strategy: "manual_merge"` 且**不得**覆蓋伺服器上的資料，前端會建立本地 `sync_conflicts` 記錄，保留兩版供使用者手動選擇。 |
+| `rejected` | 驗證失敗或其他不可重試的錯誤（`error.code`／`error.message` 依 0.6 節標準錯誤格式的欄位語意）。前端標記該筆佇列項目為 `failed` 並停止自動重試該筆（避免用同一組必定失敗的資料無限重試），使用者可於 UI 手動查看錯誤訊息。 |
+
+`results` 陣列順序不要求與請求 `mutations` 順序一致，前端以 `client_mutation_id` 做 map 比對。
+
+### 1.2.2 `GET /api/v1/sync/?since={cursor}` — Pull（下載伺服器端變更）
+
+| 參數 | 型別 | 說明 |
+| --- | --- | --- |
+| `since` | string，選填 | 上次 pull 拿到的 `cursor`；首次呼叫（本機從未同步過）省略此參數，後端應回傳「使用者帳號目前所有未刪除記錄」的完整快照當作首批變更（等同全量初始化）。 |
+
+回應（`200`）：
+
+```json
+{
+  "changes": [
+    {
+      "resource": "tasks",
+      "op": "update",
+      "record_id": "8f2a...",
+      "record": { "id": "8f2a...", "title": "...", "version": 3, "updated_at": "2026-07-20T03:09:00.000Z", "...": "..." },
+      "server_updated_at": "2026-07-20T03:09:00.000Z"
+    },
+    {
+      "resource": "tasks",
+      "op": "remove",
+      "record_id": "3c11...",
+      "server_updated_at": "2026-07-20T03:09:30.000Z"
+    }
+  ],
+  "cursor": "2026-07-20T03:09:30.000Z:3c11...",
+  "has_more": false
+}
+```
+
+| 欄位 | 說明 |
+| --- | --- |
+| `changes[].op` | `create`／`update` 皆帶完整 `record`；`remove` 只需 `record_id`，`record` 可省略（前端只需要把本地對應記錄標記 `deleted=true`）。 |
+| `changes[].server_updated_at` | 該筆變更在伺服器上的實際時間，**前端一律以此欄位做時間比較，不使用用戶端裝置時鐘**（見 1.2.3）。 |
+| `cursor` | 不透明字串（opaque token），前端只會原樣回傳給下一次 `since`，不解析內容。建議實作為「時間戳 + 該時間戳內最後一筆記錄 id」的組合以應付同一毫秒多筆變更，避免漏抓或重複。 |
+| `has_more` | 是否還有更多變更未包含在本次回應（後端可自行決定單頁筆數上限，建議 ≤500 筆）。若為 `true`，前端會用回應的 `cursor` 立即再拉一次，直到 `has_more=false` 或達到前端自訂的單次同步分頁上限（目前為 20 頁，防止串接錯誤時無限迴圈）。 |
+
+### 1.2.3 冪等性、時鐘偏差與重試
+
+- **`client_mutation_id` 冪等**：見 1.2.1；同一 id 重複送達（前端重試、或請求逾時後客戶端誤判失敗而重送）必須是安全的 no-op，回傳與首次相同的結果。
+- **時鐘偏差以伺服器時間為準**：所有「誰比較新」的判斷（LWW／版本比對）一律使用後端產生的 `server_updated_at` / `updated_at`，不得信任 `client_updated_at`（裝置時鐘可能不準）。後端寫入記錄時的 `updated_at` 必須是**伺服器當下時間**，而非直接採用請求 body 傳入的值。
+- **Retry with backoff**：前端失敗（`network_error`、5xx、或個別 `rejected` 結果）時，會將受影響的佇列項目標記 `failed` 並以指數退避（初始 5 秒，上限 5 分鐘，含隨機抖動）自動重試整批 push；使用者也可在 UI 手動點擊「立即同步」立即重試，不受退避計時器影響。後端**不需要**任何額外的節流／重試專屬邏輯，維持一般 REST 端點的行為即可（若需要限流，回傳標準 429 + `Retry-After`，前端目前會視同一般失敗處理並照原本退避重試）。
+- **後端尚未實作期間**：本端點在後端完成前呼叫必定失敗（連線錯誤或 404），前端已將此視為預期中的暫時狀態，佇列會停留在 `pending`／`failed`，UI 顯示「待同步／失敗，將自動重試」，不會拋出未捕捉例外或阻塞其他功能。
+
+---
+
 ## 2. 資源總表
 
 34 個資源，依模組分組（順序對齊 `lib/db.ts`）。每個資源皆支援 0.3 節五個標準端點；以下僅列出**欄位形狀**、**額外查詢用途**與**自訂 action**（若有）。所有欄位除標註「必填」外，其餘為選填／可為 `null`；型別以 zod schema 為準。
@@ -725,8 +849,9 @@ POST /api/v1/{name}/{id}/{action}/    -> 200 更新後的完整 record
 - 自訂 action：**14**
 - Auth：**3**（register / login / logout）
 - 帳號層級：**2**（export / purge）
+- Sync（本機模式登入後可選開啟同步）：**2**（`POST /api/v1/sync/` push、`GET /api/v1/sync/` pull，見 §1.2）
 
-**總計：189 個 API 端點。**
+**總計：191 個 API 端點。**
 
 ## 附錄 C：資源 → 資料模組對照
 

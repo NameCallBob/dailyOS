@@ -57,6 +57,7 @@ tags:
 - name: dashboard_layout
 - name: auth
 - name: account
+- name: sync
 components:
   securitySchemes:
     BearerAuth:
@@ -3686,6 +3687,145 @@ components:
       - count
       - next
       - previous
+    SyncOp:
+      type: string
+      enum:
+      - create
+      - update
+      - remove
+    SyncPushMutation:
+      type: object
+      description: 本機模式登入後可選開啟同步；本機 sync_mutations 佇列項目的送出形狀。詳見 docs/api-design.md §1.2.1。
+      properties:
+        client_mutation_id:
+          type: string
+          format: uuid
+          description: 冪等鍵；同一筆佇列項目重試多次時固定不變，後端須以 (user_id, client_mutation_id) 去重。
+        resource:
+          type: string
+          description: 資源名稱，值域同第 2 節資源總表（34 個資源之一）。
+        op:
+          $ref: '#/components/schemas/SyncOp'
+        record_id:
+          type: string
+          format: uuid
+        payload:
+          type:
+          - object
+          - 'null'
+          description: create/update 帶完整記錄（形狀同該資源 PATCH body）；remove 可為 null 或刪除當下快照。
+          additionalProperties: true
+        client_updated_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: 前端裝置當下記錄的 updated_at，僅供後端比對參考；最終判斷一律以伺服器時間為準。
+      required:
+      - client_mutation_id
+      - resource
+      - op
+      - record_id
+    SyncPushRequest:
+      type: object
+      properties:
+        mutations:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncPushMutation'
+      required:
+      - mutations
+    SyncConflictInfo:
+      type: object
+      properties:
+        strategy:
+          type: string
+          enum:
+          - server_wins
+          - manual_merge
+          - tombstone_wins
+        server_record:
+          type: object
+          additionalProperties: true
+        server_version:
+          type: integer
+        server_updated_at:
+          type: string
+          format: date-time
+    SyncPushResult:
+      type: object
+      properties:
+        client_mutation_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - applied
+          - conflict
+          - rejected
+        record:
+          type: object
+          additionalProperties: true
+          description: status=applied 時，套用後的最終完整記錄。
+        conflict:
+          $ref: '#/components/schemas/SyncConflictInfo'
+        error:
+          $ref: '#/components/schemas/ApiError'
+      required:
+      - client_mutation_id
+      - status
+    SyncPushResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncPushResult'
+        cursor:
+          type: string
+          description: 不透明字串（opaque token），前端只原樣回傳給下一次 pull 的 since 參數。
+      required:
+      - results
+      - cursor
+    SyncServerChange:
+      type: object
+      properties:
+        resource:
+          type: string
+        op:
+          $ref: '#/components/schemas/SyncOp'
+        record_id:
+          type: string
+          format: uuid
+        record:
+          type: object
+          additionalProperties: true
+          description: create/update 帶完整記錄；remove 可省略。
+        server_updated_at:
+          type: string
+          format: date-time
+          description: 該筆變更在伺服器上的實際時間；前端一律以此欄位做時間比較，不使用裝置時鐘。
+      required:
+      - resource
+      - op
+      - record_id
+      - server_updated_at
+    SyncPullResponse:
+      type: object
+      properties:
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncServerChange'
+        cursor:
+          type: string
+        has_more:
+          type: boolean
+      required:
+      - changes
+      - cursor
+      - has_more
 security:
 - BearerAuth: []
 paths:
@@ -7863,4 +8003,51 @@ paths:
       responses:
         '204':
           description: 已刪除
+        '401': *id326
+  /api/v1/sync/:
+    post:
+      tags:
+      - sync
+      summary: 批次上傳待同步佇列（push）
+      description: |-
+        本機模式登入後可選開啟同步（見 docs/offline-sync.md §6）。前端一次性批次送出本地
+        sync_mutations 佇列（pending/failed 狀態）；`client_mutation_id` 為冪等鍵，同一值重複
+        送達必須是安全的 no-op，回傳與首次相同的結果。詳見 docs/api-design.md §1.2.1。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncPushRequest'
+      responses:
+        '200':
+          description: 逐筆處理結果（applied/conflict/rejected）與最新游標
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncPushResponse'
+        '401': *id326
+        '422': *id329
+    get:
+      tags:
+      - sync
+      summary: 下載伺服器端變更（pull）
+      description: |-
+        本機模式登入後可選開啟同步（見 docs/offline-sync.md §6）。省略 `since` 時回傳目前帳號
+        所有未刪除記錄作為首批變更（全量初始化）。所有「誰比較新」的判斷一律以本回應的
+        `server_updated_at`（伺服器時間）為準，不使用用戶端裝置時鐘。詳見 docs/api-design.md §1.2.2。
+      parameters:
+      - name: since
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 上次 pull 取得的 cursor（不透明字串）；首次呼叫可省略。
+      responses:
+        '200':
+          description: 變更清單、最新游標、是否還有更多分頁
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncPullResponse'
         '401': *id326

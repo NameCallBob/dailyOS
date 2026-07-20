@@ -1,34 +1,43 @@
 # DailyOS — 離線／同步策略（Offline & Sync Contract）
 
-> 本文件說明「試用（Trial）」與「登入（Auth）」兩種資料流的實際運作方式，
-> 以及未來若要打通「試用資料匯入登入帳號」或「登入模式支援離線佇列」時，
-> 應遵循的同步欄位與衝突策略。
+> 本文件說明「試用（Trial）」「本機（Local）」「登入（Auth）」三種資料流的實際運作方式，
+> 以及第 6 節「本機模式登入後可選開啟雲端同步」這條**已實作**的路徑（`frontend/src/features/sync/**`）
+> 應遵循的同步欄位與衝突策略。第 4 節保留原本「若要補上真正的離線佇列」的分析——
+> 該分析正是第 6 節實作依循的設計依據，兩節內容一致，不衝突。
 >
-> 對應程式碼：`frontend/src/lib/resource.ts`（transport 切換與衝突處理起點）、
+> 對應程式碼：`frontend/src/lib/resource.ts`（transport 切換與 `registerLocalWriteObserver`）、
 > `frontend/src/lib/db.ts`（Dexie schema）、`frontend/src/lib/http.ts`（REST client）、
-> `frontend/src/lib/mode.ts`（模式切換）。
+> `frontend/src/lib/mode.ts`（模式切換：`trial` / `local` / `auth`）、
+> `frontend/src/features/sync/**`（本機模式的同步引擎：佇列、push/pull、衝突處理、`<SyncSection/>`）。
 
 ---
 
-## 1. 兩種資料流總覽
+## 1. 三種資料流總覽
 
 ```
-                daios_mode cookie
-                       │
-        ┌──────────────┴───────────────┐
-        │ "trial"                      │ "auth"
-        ▼                               ▼
-┌───────────────────┐          ┌─────────────────────┐
-│ Dexie (IndexedDB)  │          │ REST /api/v1/{name}/ │
-│ 瀏覽器本機，單一裝置 │          │ 伺服器，多裝置共用     │
-│ 無需登入、無需網路   │          │ 需要 Bearer token     │
-│ 首次讀取 lazy-seed  │          │ 由後端持久化           │
-└───────────────────┘          └─────────────────────┘
+                        daios_mode cookie
+                               │
+        ┌──────────────────────┼───────────────────────┐
+        │ "trial"               │ "local"                │ "auth"
+        ▼                       ▼                        ▼
+┌───────────────────┐  ┌────────────────────┐   ┌─────────────────────┐
+│ Dexie (IndexedDB)  │  │ Dexie (IndexedDB)   │   │ REST /api/v1/{name}/ │
+│ DaiOSDB_trial       │  │ DaiOSDB              │   │ 伺服器，多裝置共用     │
+│ demo、可隨時重置      │  │ 真實資料、不 seed      │   │ 需要 Bearer token     │
+│ 無需登入、無需網路     │  │ 無需登入、無需網路       │   │ 由後端持久化           │
+│ 首次讀取 lazy-seed    │  │ 可安裝 PWA／本機提醒    │   │                       │
+│                    │  │ 登入後可選開啟雲端同步   │   │                       │
+└───────────────────┘  └────────────────────┘   └─────────────────────┘
+                               │
+                     登入 + 開啟同步開關時
+                               ▼
+                  features/sync/**（見第 6 節）
+                  批次 push/pull /api/v1/sync/
 ```
 
-- **UI／元件層完全相同**：所有畫面一律透過 `createResource(name, schema, seed, actions)` 產生的 `Repo<T>` 存取資料，不知道也不關心目前是哪個 transport。
-- **切換依據**：`lib/mode.ts` 讀寫的 cookie `daios_mode`（`"trial"` | `"auth"`）。`lib/resource.ts` 內的 `impl.list/get/create/update/remove` 用 `isAuth()` 判斷呼叫 `trial.*`（Dexie）或 `auth.*`（`httpResource` 封裝的 fetch）。
-- **目前版本不存在「背景同步佇列」**：試用模式資料只存在該瀏覽器的 IndexedDB，不會自動上傳；登入模式資料每次操作即時打 API，沒有離線暫存 — 若斷線，操作直接失敗並顯示錯誤 toast（見 `http.ts` 的 `network_error`）。「離線／同步」目前的實際意涵是「試用 vs. 登入兩套獨立資料來源如何在未來合併」，而非「登入模式下的斷線續傳」。本文件第 4 節列出若要補上真正的離線佇列／帳號合併功能時應遵循的規則。
+- **UI／元件層完全相同**：所有畫面一律透過 `createResource(name, schema, seed, actions)` 產生的 `Repo<T>` 存取資料，不知道也不關心目前是哪個 transport。`trial` 與 `local` 共用同一套 Dexie 程式碼路徑（差別只在 `lib/db.ts` 的資料庫名稱與是否 lazy-seed），`auth` 走 REST。
+- **切換依據**：`lib/mode.ts` 讀寫的 cookie `daios_mode`（`"trial"` | `"local"` | `"auth"`）。`lib/resource.ts` 內的 `impl.list/get/create/update/remove` 用 `isAuth()` 判斷呼叫 `trial.*`（Dexie，`trial`／`local` 共用）或 `auth.*`（`httpResource` 封裝的 fetch）。
+- **背景同步佇列僅存在於「本機模式 + 已登入 + 使用者手動開啟」時**：試用模式資料只存在該瀏覽器的 IndexedDB，不會自動上傳；登入模式資料每次操作即時打 API，沒有離線暫存 — 若斷線，操作直接失敗並顯示錯誤 toast（見 `http.ts` 的 `network_error`）。本機模式預設也**不**自動上傳，使用者需在設定頁 `<SyncSection/>` 主動開啟同步開關（見第 6 節），開啟後 `lib/resource.ts` 的 `registerLocalWriteObserver` 才會把每次 Dexie 寫入排入 `features/sync/**` 的佇列，背景批次 push/pull。第 4 節列出若要補上真正的離線佇列／帳號合併功能時應遵循的規則，第 6 節是該分析在「本機模式」情境下的實作落地。
 
 ### 1.1 試用模式（Trial）資料流
 
@@ -46,6 +55,16 @@
    - 請求 body camelCase → snake_case；回應 body snake_case → camelCase；
    - 非 2xx 回應一律轉為 `ApiRequestError`（`{status, code, message, fieldErrors, requestId}`）。
 3. 資料持久化與跨裝置同步完全交給後端資料庫；前端不做任何額外快取持久化（react-query 快取僅存於記憶體，重新整理頁面即消失，之後重新 `fetch`）。
+
+### 1.3 本機模式（Local）資料流
+
+1. 使用者於落地頁選擇「本機」→ `setMode("local")`，不需註冊；資料存在獨立的 `DaiOSDB`（見 `lib/db.ts` `DB_NAME_LOCAL`），與試用模式的 `DaiOSDB_trial` 完全隔離，不互相污染。
+2. 與試用模式共用 `lib/resource.ts` 的 `trial.*` transport 實作（`ensureSeeded`／`create`／`update`／`remove` 邏輯相同），差別只有：本機模式**不會** lazy-seed（`ensureSeeded()` 內以 `isTrial()` 判斷，`local` 一律略過），起始為空、完全是使用者自己輸入的真實資料。
+3. 可安裝為 PWA、使用本機提醒（Notification Triggers，限 Chromium；見 README 已知限制）、JSON 匯出/匯入以跨電腦搬移資料。
+4. **登入後可選擇開啟雲端同步**：使用者於「本機」模式下額外完成登入（取得 `daios_token`，但**不**切換 `daios_mode` 為 `"auth"` — 仍是 `local` 模式，只是多了 token）後，設定頁的 `<SyncSection/>`（`features/sync/components/sync-section.tsx`）會顯示同步開關；開啟後：
+   - `lib/resource.ts` 每次本地寫入都會透過 `registerLocalWriteObserver` 通知 `features/sync/engine.ts` 註冊的觀察者，寫入 `features/sync/db.ts` 的獨立 Dexie 資料庫（`DaiOSDB_sync`）的 `sync_mutations` 佇列表。
+   - 佇列以批次 `POST /api/v1/sync/` push、`GET /api/v1/sync/?since=cursor` pull 的方式與後端同步，詳細契約見 `docs/api-design.md` §1.2、`docs/openapi.yaml`；衝突處理見本文件第 6 節（延伸自第 3 節的一般策略）。
+   - 關閉開關、或未登入、或處於 `trial`/`auth` 模式時，`features/sync/**` 的 `initSync()` 皆為 no-op，不會產生任何佇列項目或網路請求。
 
 ---
 
@@ -128,3 +147,74 @@
 | 高頻事件型記錄 | habit_logs, water_logs, medication_logs, workout_sets, time_entries | LWW（`updatedAt`） | 是（同筆記錄可覆蓋；不同筆天然疊加不衝突） |
 | 自由文字內容 | notes, note_versions | 手動合併，寫入前必快照 | **否**，偵測到衝突需 409 + 使用者介入 |
 | Singleton 設定 | user_profile, user_preferences, notification_prefs, dashboard_layout | Server-wins（單筆保護） | 是；後端應以 `user_id` 唯一索引避免重複建立 |
+
+---
+
+## 6. 本機模式↔雲端同步引擎（已實作，`features/sync/**`）
+
+本節是第 4 節「若要補上真正的離線佇列」分析的**實際落地**，適用範圍限定在「本機（local）模式 + 已登入 + 使用者手動開啟同步」（見 §1.3 第 4 點）。第 2、3 節定義的同步欄位與衝突策略在此**原封不動沿用**，本節只補「佇列怎麼跑」與「pull 回來的變更怎麼套用」。
+
+### 6.1 元件與資料流
+
+```
+使用者操作（新增/編輯/刪除）
+        │
+        ▼
+createResource().create/update/remove（lib/resource.ts）
+        │  寫入 Dexie（DaiOSDB）成功後
+        ▼
+notifyLocalWrite(name, op, id) → registerLocalWriteObserver 的訂閱者
+        │
+        ▼
+features/sync/engine.ts：enqueueLocalWrite()
+   （只在 isLocal() && 使用者已開啟同步開關 && getToken() 有值 時真的入列；
+    其餘情況直接略過，不建立佇列項目、不佔用 IndexedDB 空間）
+        │  讀回 Dexie 最新快照，寫入 sync_mutations（獨立 Dexie DB：DaiOSDB_sync）
+        ▼
+sync_mutations: { id, resource, op, recordId, payload, clientMutationId, createdAt, status }
+        │
+        │  triggerSync()：手動點擊「立即同步」／每 60 秒自動／連線恢復（online 事件）／失敗後 backoff 重試
+        ▼
+POST /api/v1/sync/（批次 push，見 docs/api-design.md §1.2.1）──► 逐筆 applied/conflict/rejected
+        │
+        ▼
+GET /api/v1/sync/?since=cursor（pull，見 §1.2.2）──► changes[] 逐筆套用回本地 Dexie（DaiOSDB）
+```
+
+- 佇列表 `sync_mutations` 與衝突表 `sync_conflicts`、游標表 `sync_meta` 皆存在**獨立**的 Dexie 資料庫 `DaiOSDB_sync`，不混進使用者實際資料的 `DaiOSDB`——避免匯出/匯入、重置示範資料等既有的全表遍歷邏輯（`DB_TABLE_NAMES`）誤觸碰同步引擎的內部簿記。
+- `sync_mutations` 的 `payload` 是**入列當下**從 Dexie 讀回的完整記錄快照（而非觀察者事件本身攜帶的資料），確保 push 時送出的是寫入完成後的最終狀態。
+
+### 6.2 Push：批次送出 + 冪等 + 結果分派
+
+- 每次 `triggerSync()` 會把目前所有 `status ∈ {pending, failed}` 的佇列項目一次性批次送到 `POST /api/v1/sync/`，送出前先標記 `status="syncing"`。
+- 每筆 mutation 攜帶固定不變的 `clientMutationId`（同一佇列項目重試多次，此值不變），對應後端冪等去重鍵，見 `docs/api-design.md` §1.2.1／§1.2.3。
+- 回應逐筆 `results[]` 依 `status` 分派：
+  - `applied` → 從佇列移除（視為已同步；不保留「已同步」歷史，佇列只放尚未完成的項目，避免無限增長）。
+  - `conflict` → 一般資源等同 `applied` 直接移除（伺服器已依 server-wins 套用最新版本，接下來的 pull 會把最終結果帶回本地）；`notes` 等手動合併資源同樣從佇列移除，但由**pull 階段**（見 6.3）依據伺服器同時回傳的變更建立 `sync_conflicts` 記錄，不在 push 階段直接建立（因為 push 回應只知道「衝突了」，完整的雙方內容比對交給 pull 階段讀到的 `record` 統一處理，避免兩處邏輯各自維護一份衝突偵測規則）。
+  - `rejected` → 標記 `status="failed"`、`retryCount+1`、記錄 `lastError`，停止自動重試該筆內容本身（除非使用者手動編輯後產生新的佇列項目），但仍會顯示於 UI 供使用者查看。
+
+### 6.3 Pull：套用伺服器變更與衝突偵測
+
+- `GET /api/v1/sync/?since=cursor` 取得的 `changes[]` 逐筆呼叫 `applyServerChange()`：
+  - `op="remove"` → 本地對應記錄若存在則設 `deleted=true`（tombstone 勝出），因為是軟刪除，原欄位仍保留，**可從垃圾桶還原**，符合「刪除衝突 tombstone 勝出但可還原」的要求。
+  - `op ∈ {create, update}` 且本地不存在該筆 → 直接寫入。
+  - `op ∈ {create, update}` 且本地已存在：
+    - 一般資源（非 `notes`）：Last-Write-Wins，以 `change.serverUpdatedAt`（**伺服器時間**，見 §2 / §1.2.3「時鐘偏差以伺服器時間為準」）與本地 `updatedAt` 比較，伺服器較新才覆蓋，本地較新則保留（留給下一輪 push 送出）。
+    - `notes`：若本地對該筆記錄仍有「尚未同步完成」的佇列項目（代表使用者在本地也改過、且改動還沒送達伺服器）且兩版內容不同 → **不覆蓋**，寫入 `sync_conflicts`（保留本地與伺服器兩版快照），由 `<SyncSection/>` 的衝突清單 + 底部抽屜（`ConflictSheet`）交使用者手動選「保留伺服器版本」／「保留我的版本」，不提供自動合併。
+- `cursor` 為不透明字串，前端只原樣保存與回傳，不解析內容；每頁套用完成後立即持久化，若同一輪同步中途失敗，下次可從已成功的 cursor 繼續，不會重複套用已處理過的變更。
+
+### 6.4 失敗顯示與重試
+
+- 網路請求失敗（後端尚未實作時必然發生）：受影響的佇列項目標記 `failed`，UI（`<SyncSection/>` → `QueueStatus`）明確顯示「失敗 N 筆」與最近一次錯誤訊息，並提示下一次自動重試時間；不會拋出未捕捉例外、不會讓頁面白屏或卡住。
+- 重試排程：指數退避，初始 5 秒、上限 5 分鐘、含隨機抖動，避免多個分頁同時重試造成請求尖峰；使用者可隨時點擊「立即同步」略過退避計時器手動重試。
+- 開關關閉、切換離開本機模式、或登出（token 清除）：`isSyncEligible()` 回傳 `false`，`triggerSync()` 直接略過，不產生任何請求；佇列內容保留，供之後重新開啟時繼續處理。
+
+### 6.5 對外介面
+
+| 匯出 | 型別 | 說明 |
+| --- | --- | --- |
+| `initSync()` | `() => () => void` | App Shell 掛載一次（例如 root layout 的 `useEffect`）；非本機模式為 no-op；回傳 cleanup。 |
+| `triggerSync()` | `() => Promise<void>` | 手動觸發一次 push+pull；供「立即同步」按鈕與自動排程共用，內部已去重併發呼叫。 |
+| `setSyncPreference(enabled)` | `(boolean) => void` | 使用者開關同步；關閉時清除重試排程，不清空既有佇列。 |
+| `isSyncEligible()` | `() => boolean` | 是否具備執行同步的前提（本機模式 + 已登入 + 已開啟）。 |
+| `<SyncSection/>` | React 元件 | 設定頁掛載：開關、佇列狀態（待送出/失敗/最後同步時間）、衝突清單、「立即同步」按鈕；自行處理 Loading/Error/Empty 三態與模式判斷（非本機模式／未登入時顯示對應提示，不顯示同步 UI）。 |
