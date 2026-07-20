@@ -6,7 +6,7 @@
 
 import { create } from "zustand";
 
-export type SettingsTab = "profile" | "notifications" | "privacy" | "mode";
+export type SettingsTab = "profile" | "notifications" | "privacy" | "data" | "mode";
 
 interface SettingsUiState {
   tab: SettingsTab;

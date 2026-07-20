@@ -2,32 +2,56 @@
 
 import { useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
+import { InstallButton } from "@/components/pwa/install-button";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import type { DaiosMode } from "@/lib/mode";
-import { resetTrialSeedData, switchToAuthMode, switchToTrialMode } from "../mode-actions";
+import { allModes, type DaiosMode } from "@/lib/mode";
+import { resetTrialSeedData, switchToAuthMode, switchToLocalMode, switchToTrialMode } from "../mode-actions";
 import { useSettingsUiStore } from "../store";
 
 export interface ModeSectionProps {
   mode: DaiosMode;
 }
 
-/** 模式切換：試用 ⇄ 登入，以及（僅試用模式）重置示範資料。 */
+const MODE_LABEL: Record<DaiosMode, string> = {
+  trial: "試用模式",
+  local: "本機模式",
+  auth: "雲端模式",
+};
+
+const MODE_TONE: Record<DaiosMode, BadgeTone> = {
+  trial: "neutral",
+  local: "success",
+  auth: "accent",
+};
+
+const MODE_DESCRIPTION: Record<DaiosMode, string> = {
+  trial: "所有資料僅保存在此瀏覽器（IndexedDB 示範資料庫），可隨時一鍵重置，適合評估與試用。清除瀏覽器資料將會遺失。",
+  local: "你的真實資料只保存在這台裝置的瀏覽器（IndexedDB），不會自動載入示範資料。可安裝為 App、開啟本機提醒、以 JSON 匯出/匯入攜帶到其他電腦；登入後可另外選擇開啟雲端同步。",
+  auth: "資料透過伺服器 API 儲存，跨裝置即時同步，關閉裝置也能由後端推播提醒。",
+};
+
+const MODE_SWITCH_LABEL: Record<DaiosMode, string> = {
+  trial: "切換為試用模式",
+  local: "切換為本機模式",
+  auth: "切換為雲端模式（前往登入）",
+};
+
+/** 模式切換：試用／本機／雲端三種模式，以及（僅試用模式）重置示範資料。 */
 export function ModeSection({ mode }: ModeSectionProps) {
   const resetDialogOpen = useSettingsUiStore((s) => s.resetDialogOpen);
   const openResetDialog = useSettingsUiStore((s) => s.openResetDialog);
   const closeResetDialog = useSettingsUiStore((s) => s.closeResetDialog);
-  const [switching, setSwitching] = useState(false);
+  const [switchingTo, setSwitchingTo] = useState<DaiosMode | null>(null);
   const [resetting, setResetting] = useState(false);
 
-  function handleSwitch() {
-    setSwitching(true);
-    if (mode === "trial") {
-      switchToAuthMode();
-    } else {
-      switchToTrialMode();
-    }
+  function handleSwitch(target: DaiosMode) {
+    if (target === mode) return;
+    setSwitchingTo(target);
+    if (target === "trial") switchToTrialMode();
+    else if (target === "local") switchToLocalMode();
+    else switchToAuthMode();
   }
 
   async function handleReset() {
@@ -40,17 +64,36 @@ export function ModeSection({ mode }: ModeSectionProps) {
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-h3 text-ink">目前模式</h3>
-          <Badge tone={mode === "auth" ? "accent" : "neutral"}>{mode === "auth" ? "登入模式" : "試用模式"}</Badge>
+          <Badge tone={MODE_TONE[mode]}>{MODE_LABEL[mode]}</Badge>
         </div>
+        <p className="text-caption text-ink-muted">{MODE_DESCRIPTION[mode]}</p>
+        {mode === "local" ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-line-strong bg-paper-sunken px-3 py-2">
+            <span className="text-caption text-ink-soft">本機模式可安裝為 App，關閉分頁後仍能從桌面／主畫面開啟。</span>
+            <InstallButton />
+          </div>
+        ) : null}
+      </section>
+
+      <section className="flex flex-col gap-3 border-t border-line pt-6">
+        <h3 className="text-h3 text-ink">切換模式</h3>
         <p className="text-caption text-ink-muted">
-          {mode === "trial"
-            ? "試用模式的所有資料僅保存在此瀏覽器（IndexedDB），清除瀏覽器資料將會遺失。切換為登入後可跨裝置同步。"
-            : "登入模式的資料透過伺服器 API 儲存與同步。切換回試用模式將改用此瀏覽器本機的示範資料。"}
+          切換模式會整頁重新導向並套用新的資料來源；trial 與 local 使用各自獨立的本機資料庫，彼此不會互相污染。
         </p>
-        <div>
-          <Button variant="secondary" loading={switching} onClick={handleSwitch}>
-            {mode === "trial" ? "切換為登入模式" : "切換回試用模式"}
-          </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {allModes()
+            .filter((candidate) => candidate !== mode)
+            .map((candidate) => (
+              <Button
+                key={candidate}
+                variant="secondary"
+                loading={switchingTo === candidate}
+                disabled={switchingTo !== null && switchingTo !== candidate}
+                onClick={() => handleSwitch(candidate)}
+              >
+                {MODE_SWITCH_LABEL[candidate]}
+              </Button>
+            ))}
         </div>
       </section>
 

@@ -9,7 +9,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { http } from "@/lib/http";
-import { setMode, setToken } from "@/lib/mode";
+import { getMode, setMode, setToken } from "@/lib/mode";
 import { ApiRequestError } from "@/lib/types";
 
 const loginSchema = z.object({
@@ -39,7 +39,13 @@ export function LoginForm() {
     try {
       const data = await http.post<LoginResponse>("/api/v1/auth/login/", values);
       setToken(data.token);
-      setMode("auth");
+      // 從「本機模式」的同步設定前來登入時（features/sync 的「前往登入」導向這裡），
+      // 目的只是取得 token 以開啟雲端同步，不應把使用者切到 auth 模式——那會讓
+      // resource.ts 改走 HTTP，等於看不到本機 Dexie 裡的真實資料。只有從落地頁
+      // 「登入雲端」（此時尚未設定 mode）進來時才真正切換為 auth 模式。
+      if (getMode() !== "local") {
+        setMode("auth");
+      }
       router.push("/dashboard");
     } catch (error) {
       if (error instanceof ApiRequestError) {

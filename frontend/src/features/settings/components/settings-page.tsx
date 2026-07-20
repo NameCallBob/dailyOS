@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Tabs } from "@/components/ui/tabs";
 import type { DaiosMode } from "@/lib/mode";
 import { useSettingsUiStore, type SettingsTab } from "../store";
+import { DataSyncSection } from "./data-sync-section";
 import { ModeSection } from "./mode-section";
 import { NotificationForm } from "./notification-form";
 import { PrivacySection } from "./privacy-section";
@@ -15,6 +16,7 @@ const TAB_ITEMS: { value: SettingsTab; label: string }[] = [
   { value: "profile", label: "個人資料" },
   { value: "notifications", label: "通知偏好" },
   { value: "privacy", label: "隱私與資料" },
+  { value: "data", label: "資料、提醒與同步" },
   { value: "mode", label: "模式" },
 ];
 
@@ -45,6 +47,7 @@ export function SettingsPage({ mode }: SettingsPageProps) {
         {tab === "profile" ? <ProfileForm /> : null}
         {tab === "notifications" ? <NotificationForm /> : null}
         {tab === "privacy" ? <PrivacySection /> : null}
+        {tab === "data" ? <DataSyncSection mode={mode} /> : null}
         {tab === "mode" ? <ModeSection mode={mode} /> : null}
       </Card>
     </div>
