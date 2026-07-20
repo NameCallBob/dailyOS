@@ -1,19 +1,11 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-
-import { MODE_COOKIE } from "@/lib/mode";
+import { AutoRedirect } from "@/components/auth/auto-redirect";
 
 import { LandingActions } from "./landing-actions";
 
-export default async function LandingPage() {
-  const cookieStore = await cookies();
-  const mode = cookieStore.get(MODE_COOKIE)?.value;
-  if (mode === "trial" || mode === "local" || mode === "auth") {
-    redirect("/dashboard");
-  }
-
+export default function LandingPage() {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-paper px-6 py-16">
+      <AutoRedirect context="landing" />
       <div className="flex w-full max-w-xl flex-col items-center gap-8 text-center">
         <p className="text-label uppercase text-ink-muted">個人任務・健康・生活整合平台</p>
         <h1 className="text-display text-ink">DailyOS</h1>

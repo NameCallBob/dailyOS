@@ -7,21 +7,24 @@ import { Toaster } from "@/components/ui/toast";
 
 import "./globals.css";
 
+// metadata.icons 不會自動套用 basePath（僅 manifest 會），故手動前綴，
+// 讓 GitHub Pages 子路徑（/dailyOS）與本機（"")皆正確。
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
 export const metadata: Metadata = {
   title: {
     default: "DailyOS",
     template: "%s · DailyOS",
   },
   description: "DailyOS — 個人任務、健康與生活的整合式管理平台。",
-  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "DailyOS",
   },
   icons: {
-    icon: "/icons/icon.svg",
-    apple: "/icons/icon-192.png",
+    icon: `${BASE}/icons/icon.svg`,
+    apple: `${BASE}/icons/icon-192.png`,
   },
 };
 

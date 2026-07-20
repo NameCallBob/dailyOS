@@ -1,24 +1,13 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 
-import { MODE_COOKIE, TOKEN_COOKIE } from "@/lib/mode";
+import { AutoRedirect } from "@/components/auth/auto-redirect";
 
 import { LoginForm } from "./login-form";
 
-export default async function LoginPage() {
-  const cookieStore = await cookies();
-  const mode = cookieStore.get(MODE_COOKIE)?.value;
-  const token = cookieStore.get(TOKEN_COOKIE)?.value;
-  // 注意：mode === "auth" 但沒有 token 時「不可」導向 /dashboard——
-  // middleware 會因為缺 token 把 /dashboard 導回這裡，若在此無條件放行
-  // 會與 middleware 形成無限重導迴圈（ERR_TOO_MANY_REDIRECTS）。
-  if (mode === "trial" || (mode === "auth" && token)) {
-    redirect("/dashboard");
-  }
-
+export default function LoginPage() {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-paper px-6 py-16">
+      <AutoRedirect context="login" />
       <div className="flex w-full max-w-sm flex-col gap-6">
         <div className="flex flex-col gap-1 text-center">
           <Link href="/" className="text-label uppercase text-ink-muted">

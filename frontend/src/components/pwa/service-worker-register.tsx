@@ -8,7 +8,8 @@ export function ServiceWorkerRegister() {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
     if (process.env.NODE_ENV !== "production") return;
 
-    navigator.serviceWorker.register("/sw.js").catch(() => {
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+    navigator.serviceWorker.register(`${basePath}/sw.js`).catch(() => {
       // 靜默失敗：PWA 能力為漸進增強，不影響核心功能。
     });
   }, []);
